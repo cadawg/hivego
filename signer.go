@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/decred/base58"
-	"github.com/decred/dcrd/dcrec/secp256k1/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 )
 
 type signingDataFromChain struct {
@@ -76,7 +76,7 @@ func SignDigest(digest []byte, wif *string) ([]byte, error) {
 		return nil, err
 	}
 
-	return secp256k1.SignCompact(keyPair.PrivateKey, digest, true)
+	return ecdsa.SignCompact(keyPair.PrivateKey, digest, true), nil
 }
 
 func GphBase58CheckDecode(input string) ([]byte, [1]byte, error) {

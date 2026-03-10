@@ -5,18 +5,19 @@ import (
 	"testing"
 
 	"github.com/cfoxon/hivego"
-	"github.com/decred/dcrd/dcrec/secp256k1/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 func TestKeyPairFromWif(t *testing.T) {
 	keyPair, err := hivego.KeyPairFromWif("5JUvJcF6rQvFbZLtDFagreKCYWWcHpHApy7sbRHZ6PeZYNftLh6")
 
 	if err != nil {
-		t.Error("Failed to decode valid private key")
+		t.Fatal("Failed to decode valid private key")
+		return
 	}
 
 	var expectedPubKey = []byte{3, 106, 48, 22, 243, 45, 96, 255, 51, 197, 8, 179, 85, 147, 131, 32, 165, 214, 76, 64, 90, 168, 63, 67, 124, 7, 139, 26, 114, 145, 144, 94, 153}
-	var actualPubKey = keyPair.PublicKey.Serialize()
+	var actualPubKey = keyPair.PublicKey.SerializeCompressed()
 
 	if !bytes.Equal(expectedPubKey, actualPubKey) {
 		t.Errorf("Public Key %v does not match expected key %v", actualPubKey, expectedPubKey)
@@ -34,11 +35,12 @@ func TestDecodePublicKey(t *testing.T) {
 	pubKey, err := hivego.DecodePublicKey("STM7dzxQo2aaav9weydSVAwqewcUz2GbUwyWrAVqkdiKsD6V1uX8B")
 
 	if err != nil {
-		t.Errorf("Error Decoding valid public key")
+		t.Fatal("Error Decoding valid public key")
+		return
 	}
 
 	var expectedPubKey = []byte{3, 106, 48, 22, 243, 45, 96, 255, 51, 197, 8, 179, 85, 147, 131, 32, 165, 214, 76, 64, 90, 168, 63, 67, 124, 7, 139, 26, 114, 145, 144, 94, 153}
-	var actualPubKey = pubKey.Serialize()
+	var actualPubKey = pubKey.SerializeCompressed()
 
 	if !bytes.Equal(expectedPubKey, actualPubKey) {
 		t.Errorf("Public Key %v does not match expected key %v", actualPubKey, expectedPubKey)

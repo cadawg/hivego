@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/decred/base58"
-	"github.com/decred/dcrd/dcrec/secp256k1/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	//lint:ignore SA1019 ripemd160 is used for checksums of public keys and is required for compatibility with Hive
 	"golang.org/x/crypto/ripemd160"
@@ -26,9 +26,9 @@ func KeyPairFromWif(wif string) (*KeyPair, error) {
 		return nil, err
 	}
 
-	prvKey, pubKey := secp256k1.PrivKeyFromBytes(privKey)
+	prvKey := secp256k1.PrivKeyFromBytes(privKey)
 
-	return &KeyPair{prvKey, pubKey}, nil
+	return &KeyPair{prvKey, prvKey.PubKey()}, nil
 }
 
 // Decodes a base58 Hive public key to secp256k1 public key

@@ -33,7 +33,7 @@ func expTimeB(expTime string) ([]byte, error) {
 	return buf, nil
 }
 
-func countOpsB(ops []hiveOperation) []byte {
+func countOpsB(ops []HiveOperation) []byte {
 	b := make([]byte, 5)
 	l := binary.PutUvarint(b, uint64(len(ops)))
 	return b[0:l]
@@ -60,7 +60,19 @@ func appendVStringArray(a []string, b *bytes.Buffer) *bytes.Buffer {
 	return b
 }
 
-func serializeTx(tx hiveTransaction) ([]byte, error) {
+// appendAssetBytes serializes a Hive Asset in the binary wire format:
+// 8-byte LE int64 amount, 1-byte precision, 7-byte null-padded symbol.
+func appendAssetBytes(a Asset, b *bytes.Buffer) {
+	amountBuf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(amountBuf, uint64(a.Amount))
+	b.Write(amountBuf)
+	b.WriteByte(a.Precision)
+	symbolBytes := make([]byte, 7)
+	copy(symbolBytes, a.Symbol)
+	b.Write(symbolBytes)
+}
+
+func serializeTx(tx Transaction) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.Write(refBlockNumB(tx.RefBlockNum))
 	buf.Write(refBlockPrefixB(tx.RefBlockPrefix))
@@ -79,11 +91,11 @@ func serializeTx(tx hiveTransaction) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func serializeOps(ops []hiveOperation) ([]byte, error) {
+func serializeOps(ops []HiveOperation) ([]byte, error) {
 	var opsBuf bytes.Buffer
 	opsBuf.Write(countOpsB(ops))
 	for _, op := range ops {
-		b, err := op.serializeOp()
+		b, err := op.SerializeOp()
 		if err != nil {
 			return nil, err
 		}
@@ -92,9 +104,9 @@ func serializeOps(ops []hiveOperation) ([]byte, error) {
 	return opsBuf.Bytes(), nil
 }
 
-func (o voteOperation) serializeOp() ([]byte, error) {
+func (o VoteOperation) SerializeOp() ([]byte, error) {
 	var voteBuf bytes.Buffer
-	voteBuf.Write([]byte{opIdB(o.opText)})
+	voteBuf.Write([]byte{opIdB("vote")})
 	appendVString(o.Voter, &voteBuf)
 	appendVString(o.Author, &voteBuf)
 	appendVString(o.Permlink, &voteBuf)
@@ -106,13 +118,35 @@ func (o voteOperation) serializeOp() ([]byte, error) {
 	return voteBuf.Bytes(), nil
 }
 
-func (o customJsonOperation) serializeOp() ([]byte, error) {
+func (o CustomJsonOperation) SerializeOp() ([]byte, error) {
 	var jBuf bytes.Buffer
-	jBuf.Write([]byte{opIdB(o.opText)})
+	jBuf.Write([]byte{opIdB("custom_json")})
 	appendVStringArray(o.RequiredAuths, &jBuf)
 	appendVStringArray(o.RequiredPostingAuths, &jBuf)
 	appendVString(o.Id, &jBuf)
 	appendVString(o.Json, &jBuf)
 
 	return jBuf.Bytes(), nil
+}
+
+func (o TransferOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write([]byte{opIdB("transfer")})
+	appendVString(o.From, &buf)
+	appendVString(o.To, &buf)
+	appendAssetBytes(o.Amount, &buf)
+	appendVString(o.Memo, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o ClaimRewardBalanceOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write([]byte{opIdB("claim_reward_balance")})
+	appendVString(o.Account, &buf)
+	appendAssetBytes(o.RewardHive, &buf)
+	appendAssetBytes(o.RewardHbd, &buf)
+	appendAssetBytes(o.RewardVests, &buf)
+
+	return buf.Bytes(), nil
 }

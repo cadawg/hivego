@@ -1,68 +1,99 @@
 package hivego
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
 	"strconv"
 
-	"github.com/cfoxon/jsonrpc2client"
+	"github.com/cadawg/jsonrpc2client"
 )
 
-type HiveRpcNode struct {
-	address     string
-	MaxConn     int
-	MaxBatch    int
-	NoBroadcast bool
+// HiveMainnetChainID is the chain ID for Hive mainnet.
+const HiveMainnetChainID = "beeab0de00000000000000000000000000000000000000000000000000000000"
+
+// Client is the Hive blockchain RPC client.
+//
+//	client := hivego.NewClient("https://api.hive.blog", "https://rpc.ecency.com")
+//	txid, err  := client.Broadcast.Vote(...)
+//	block, err := client.Database.GetBlock(...)
+type Client struct {
+	// Broadcast provides methods for submitting operations to the blockchain.
+	Broadcast BroadcastAPI
+	// Database provides methods for reading data from the blockchain.
+	Database DatabaseAPI
+
+	nodes           []string
+	MaxConn         int
+	MaxBatch        int
+	NoBroadcast     bool
+	ChainID         string // hex-encoded chain ID; defaults to HiveMainnetChainID
+	PublicKeyPrefix string // public key prefix; defaults to "STM"
 }
 
-type globalProps struct {
-	HeadBlockNumber int    `json:"head_block_number"`
-	HeadBlockId     string `json:"head_block_id"`
-	Time            string `json:"time"`
-}
+// BroadcastAPI provides methods for submitting signed operations to the Hive blockchain.
+// Access via client.Broadcast.
+type BroadcastAPI struct{ client *Client }
 
-type hrpcQuery struct {
-	method string
-	params interface{}
-}
+// DatabaseAPI provides methods for reading data from the Hive blockchain.
+// Access via client.Database.
+type DatabaseAPI struct{ client *Client }
 
-func NewHiveRpc(addr string) *HiveRpcNode {
-	return NewHiveRpcWithOpts(addr, 1, 4)
-}
+// HiveRpcNode is an alias for Client for backward compatibility.
+type HiveRpcNode = Client
 
-func NewHiveRpcWithOpts(addr string, maxConn int, maxBatch int) *HiveRpcNode {
-	return &HiveRpcNode{address: addr,
-		MaxConn:  maxConn,
-		MaxBatch: maxBatch,
+// NewClient creates a Client connecting to one or more API node addresses.
+// Nodes are tried in order on failure, providing automatic failover.
+//
+//	client := hivego.NewClient("https://api.hive.blog", "https://rpc.ecency.com")
+func NewClient(nodes ...string) *Client {
+	if len(nodes) == 0 {
+		panic("hivego: at least one node address required")
 	}
-}
-
-func (h *HiveRpcNode) GetDynamicGlobalProps() ([]byte, error) {
-	q := hrpcQuery{method: "condenser_api.get_dynamic_global_properties", params: []string{}}
-	res, err := h.rpcExec(h.address, q)
-	if err != nil {
-		return nil, err
+	c := &Client{
+		nodes:           nodes,
+		MaxConn:         1,
+		MaxBatch:        4,
+		ChainID:         HiveMainnetChainID,
+		PublicKeyPrefix: "STM",
 	}
-	return res, nil
+	c.Broadcast = BroadcastAPI{c}
+	c.Database = DatabaseAPI{c}
+	return c
 }
 
-func (h *HiveRpcNode) rpcExec(endpoint string, query hrpcQuery) ([]byte, error) {
+func (h *Client) chainIDBytes() []byte {
+	id, _ := hex.DecodeString(h.ChainID)
+	return id
+}
+
+func (h *Client) rpcExecWithFailover(query hrpcQuery) ([]byte, error) {
+	var lastErr error
+	for _, node := range h.nodes {
+		result, err := h.rpcExec(node, query)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
+func (h *Client) rpcExec(endpoint string, query hrpcQuery) ([]byte, error) {
 	rpcClient := jsonrpc2client.NewClientWithOpts(endpoint, h.MaxConn, h.MaxBatch)
 	jr2query := &jsonrpc2client.RpcRequest{Method: query.method, JsonRpc: "2.0", Id: 1, Params: query.params}
 	resp, err := rpcClient.CallRaw(jr2query)
 	if err != nil {
 		return nil, err
 	}
-
 	if resp.Error != nil {
 		return nil, errors.New(strconv.Itoa(resp.Error.Code) + "    " + resp.Error.Message)
 	}
-
 	return resp.Result, nil
 }
 
-func (h *HiveRpcNode) rpcExecBatch(endpoint string, queries []hrpcQuery) ([]json.RawMessage, error) {
+func (h *Client) rpcExecBatch(endpoint string, queries []hrpcQuery) ([]json.RawMessage, error) {
 	rpcClient := jsonrpc2client.NewClientWithOpts(endpoint, h.MaxConn, h.MaxBatch)
 
 	var jr2queries jsonrpc2client.RPCRequests
@@ -86,11 +117,10 @@ func (h *HiveRpcNode) rpcExecBatch(endpoint string, queries []hrpcQuery) ([]json
 		}
 		batchResult = append(batchResult, thisResult)
 	}
-
 	return batchResult, nil
 }
 
-func (h *HiveRpcNode) rpcExecBatchFast(endpoint string, queries []hrpcQuery) ([][]byte, error) {
+func (h *Client) rpcExecBatchFast(endpoint string, queries []hrpcQuery) ([][]byte, error) {
 	rpcClient := jsonrpc2client.NewClientWithOpts(endpoint, h.MaxConn, h.MaxBatch)
 
 	var jr2queries jsonrpc2client.RPCRequests
@@ -106,6 +136,16 @@ func (h *HiveRpcNode) rpcExecBatchFast(endpoint string, queries []hrpcQuery) ([]
 
 	var batchResult [][]byte
 	batchResult = append(batchResult, resps...)
-
 	return batchResult, nil
+}
+
+type globalProps struct {
+	HeadBlockNumber int    `json:"head_block_number"`
+	HeadBlockId     string `json:"head_block_id"`
+	Time            string `json:"time"`
+}
+
+type hrpcQuery struct {
+	method string
+	params interface{}
 }

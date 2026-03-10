@@ -1,9 +1,9 @@
-module github.com/cfoxon/hivego
+module github.com/cadawg/hivego
 
 go 1.24.0
 
 require (
-	github.com/cfoxon/jsonrpc2client v0.0.0-20221203070057-deee6c789601
+	github.com/cadawg/jsonrpc2client v0.0.0-20260310215851-24f7d3f84674
 	github.com/decred/base58 v1.0.6
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
 	golang.org/x/crypto v0.48.0

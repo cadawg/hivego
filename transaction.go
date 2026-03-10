@@ -1,16 +1,15 @@
 package hivego
 
-type TransactionQueryParams struct {
+type transactionQueryParams struct {
 	TransactionId     string `json:"id"`
 	IncludeReversible bool   `json:"include_reversible"`
 }
 
-func (h *HiveRpcNode) GetTransaction(txId string, includeReversible bool) ([]byte, error) {
-	var query = hrpcQuery{method: "account_history_api.get_transaction", params: TransactionQueryParams{TransactionId: txId, IncludeReversible: includeReversible}}
-	endpoint := h.address
-	res, err := h.rpcExec(endpoint, query)
-	if err != nil {
-		return nil, err
+// GetTransaction fetches a transaction by ID, returning raw JSON.
+func (d DatabaseAPI) GetTransaction(txId string, includeReversible bool) ([]byte, error) {
+	q := hrpcQuery{
+		method: "account_history_api.get_transaction",
+		params: transactionQueryParams{TransactionId: txId, IncludeReversible: includeReversible},
 	}
-	return res, nil
+	return d.client.rpcExecWithFailover(q)
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/cfoxon/hivego"
+	"github.com/cadawg/hivego"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -59,7 +59,7 @@ func TestGetPublicKeyString(t *testing.T) {
 
 	pubKeyString := hivego.GetPublicKeyString(pubKey)
 
-	if *pubKeyString != pubKeyStringExpected {
-		t.Errorf("Public Key string %s does not match expected string %s", *pubKeyString, pubKeyStringExpected)
+	if pubKeyString != pubKeyStringExpected {
+		t.Errorf("Public Key string %s does not match expected string %s", pubKeyString, pubKeyStringExpected)
 	}
 }

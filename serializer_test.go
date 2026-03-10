@@ -87,7 +87,7 @@ func TestSerializeOps(t *testing.T) {
 }
 
 func TestSerializeOpVoteOperation(t *testing.T) {
-	got, _ := getTestVoteOp().serializeOp()
+	got, _ := getTestVoteOp().SerializeOp()
 	expected := []byte{0, 5, 120, 101, 114, 111, 99, 5, 120, 101, 114, 111, 99, 6, 112, 105, 115, 116, 111, 110, 16, 39}
 	if !bytes.Equal(got, expected) {
 		t.Error("Expected", expected, "got", got)
@@ -95,7 +95,7 @@ func TestSerializeOpVoteOperation(t *testing.T) {
 }
 
 func TestSerializeOpCustomJsonOperation(t *testing.T) {
-	got, _ := getTestCustomJsonOp().serializeOp()
+	got, _ := getTestCustomJsonOp().SerializeOp()
 	expected := []byte{18, 0, 1, 5, 120, 101, 114, 111, 99, 7, 116, 101, 115, 116, 45, 105, 100, 17, 123, 34, 116, 101, 115, 116, 107, 34, 58, 34, 116, 101, 115, 116, 118, 34, 125}
 	if !bytes.Equal(got, expected) {
 		t.Error("Expected", expected, "got", got)

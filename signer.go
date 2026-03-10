@@ -19,8 +19,9 @@ type signingDataFromChain struct {
 	expiration     string
 }
 
-func (h *HiveRpcNode) getSigningData() (signingDataFromChain, error) {
-	propsB, err := h.GetDynamicGlobalProps()
+func (h *Client) getSigningData() (signingDataFromChain, error) {
+	q := hrpcQuery{method: "condenser_api.get_dynamic_global_properties", params: []string{}}
+	propsB, err := h.rpcExecWithFailover(q)
 	if err != nil {
 		return signingDataFromChain{}, err
 	}
@@ -45,14 +46,13 @@ func (h *HiveRpcNode) getSigningData() (signingDataFromChain, error) {
 	exp = exp.Add(30 * time.Second)
 	expStr := exp.Format("2006-01-02T15:04:05")
 
-	signingData := signingDataFromChain{refBlockNum, refBlockPrefix, expStr}
-
-	return signingData, nil
+	return signingDataFromChain{refBlockNum, refBlockPrefix, expStr}, nil
 }
 
-func hashTxForSig(tx []byte) []byte {
+// hashTxForSig computes the signing digest: SHA256(chainID + serialized tx bytes).
+func hashTxForSig(tx []byte, chainID []byte) []byte {
 	var message bytes.Buffer
-	message.Write(getHiveChainId())
+	message.Write(chainID)
 	message.Write(tx)
 
 	digest := sha256.New()
@@ -61,24 +61,22 @@ func hashTxForSig(tx []byte) []byte {
 }
 
 func hashTx(tx []byte) []byte {
-	var message bytes.Buffer
-	message.Write(tx)
-
 	digest := sha256.New()
-	digest.Write(message.Bytes())
+	digest.Write(tx)
 	return digest.Sum(nil)
 }
 
-func SignDigest(digest []byte, wif *string) ([]byte, error) {
-	keyPair, err := KeyPairFromWif(*wif)
-
+// SignDigest signs a digest with the given WIF private key using secp256k1 compact signing.
+func SignDigest(digest []byte, wif string) ([]byte, error) {
+	keyPair, err := KeyPairFromWif(wif)
 	if err != nil {
 		return nil, err
 	}
-
 	return ecdsa.SignCompact(keyPair.PrivateKey, digest, true), nil
 }
 
+// GphBase58CheckDecode decodes a Graphene/Hive base58-encoded string with a double-SHA256 checksum.
+// Returns the payload bytes, the version byte, and any error.
 func GphBase58CheckDecode(input string) ([]byte, [1]byte, error) {
 	decoded := base58.Decode(input)
 	if len(decoded) < 6 {
@@ -93,6 +91,15 @@ func GphBase58CheckDecode(input string) ([]byte, [1]byte, error) {
 	}
 	payload := decoded[1:dataLen]
 	return payload, version, nil
+}
+
+// GphBase58Encode encodes a payload with a version byte into a Graphene/Hive base58 string
+// with a double-SHA256 checksum. This is the inverse of GphBase58CheckDecode.
+func GphBase58Encode(payload []byte, version [1]byte) string {
+	input := append([]byte{version[0]}, payload...)
+	cs := checksum(input)
+	input = append(input, cs[:]...)
+	return base58.Encode(input)
 }
 
 func checksum(input []byte) [4]byte {

@@ -11,99 +11,93 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
+// PublicKeyPrefix is the default prefix for Hive public key strings.
+// Override on a per-client basis via client.PublicKeyPrefix.
+// Set to "TST" when working with the Hive public testnet.
 var PublicKeyPrefix = "STM"
 
+// KeyPair holds a secp256k1 private/public key pair.
 type KeyPair struct {
 	PrivateKey *secp256k1.PrivateKey
 	PublicKey  *secp256k1.PublicKey
 }
 
-// Gets a KeyPair from a given WIF String
+// KeyPairFromWif creates a KeyPair from a WIF-encoded private key string.
 func KeyPairFromWif(wif string) (*KeyPair, error) {
 	privKey, _, err := GphBase58CheckDecode(wif)
-
 	if err != nil {
 		return nil, err
 	}
-
 	prvKey := secp256k1.PrivKeyFromBytes(privKey)
-
 	return &KeyPair{prvKey, prvKey.PubKey()}, nil
 }
 
-// Decodes a base58 Hive public key to secp256k1 public key
+// KeyPairFromBytes creates a KeyPair from a raw 32-byte private key.
+func KeyPairFromBytes(privKeyBytes []byte) (*KeyPair, error) {
+	if len(privKeyBytes) != 32 {
+		return nil, errors.New("private key must be 32 bytes")
+	}
+	prvKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
+	return &KeyPair{prvKey, prvKey.PubKey()}, nil
+}
+
+// DecodePublicKey decodes a Hive public key string (e.g. "STM7...") to a secp256k1 public key.
+// Uses the package-level PublicKeyPrefix; for a different prefix use DecodePublicKeyWithPrefix.
 func DecodePublicKey(pubKey string) (*secp256k1.PublicKey, error) {
-	// check prefix matches
-	if pubKey[:len(PublicKeyPrefix)] != PublicKeyPrefix {
+	return DecodePublicKeyWithPrefix(pubKey, PublicKeyPrefix)
+}
+
+// DecodePublicKeyWithPrefix decodes a Hive public key string with a specific prefix (e.g. "TST").
+func DecodePublicKeyWithPrefix(pubKey, prefix string) (*secp256k1.PublicKey, error) {
+	if len(pubKey) < len(prefix) || pubKey[:len(prefix)] != prefix {
 		return nil, errors.New("invalid prefix")
 	}
 
-	// remove prefix
-	pubKey = pubKey[len(PublicKeyPrefix):]
-
-	// decode base58
-	decoded := base58.Decode(pubKey)
-
-	// get checksum
-	checksum := decoded[len(decoded)-4:]
-
-	// get public key
-	pubKeyBytes := decoded[:len(decoded)-4]
-
-	// get ripemd160 hash (checksum)
-	hasher := ripemd160.New()
-	_, err := hasher.Write(pubKeyBytes)
-	newChecksum := hasher.Sum(nil)[:4]
-
-	if err != nil {
-		return nil, err
+	decoded := base58.Decode(pubKey[len(prefix):])
+	if len(decoded) < 4 {
+		return nil, errors.New("invalid public key")
 	}
 
-	// check if checksums match
-	if !bytes.Equal(checksum, newChecksum) {
+	pubKeyBytes := decoded[:len(decoded)-4]
+	checksum := decoded[len(decoded)-4:]
+
+	hasher := ripemd160.New()
+	if _, err := hasher.Write(pubKeyBytes); err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(checksum, hasher.Sum(nil)[:4]) {
 		return nil, errors.New("checksums do not match")
 	}
 
-	parsedKey, err := secp256k1.ParsePubKey(pubKeyBytes)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return parsedKey, nil
+	return secp256k1.ParsePubKey(pubKeyBytes)
 }
 
-func (kp *KeyPair) GetPublicKeyString() *string {
-	return GetPublicKeyString(kp.PublicKey)
+// GetPublicKeyString returns the Hive public key string for a secp256k1 public key.
+// Uses the package-level PublicKeyPrefix.
+func GetPublicKeyString(pubKey *secp256k1.PublicKey) string {
+	return GetPublicKeyStringWithPrefix(pubKey, PublicKeyPrefix)
 }
 
-func GetPublicKeyString(pubKey *secp256k1.PublicKey) *string {
+// GetPublicKeyStringWithPrefix returns the Hive public key string with a specific prefix.
+func GetPublicKeyStringWithPrefix(pubKey *secp256k1.PublicKey, prefix string) string {
 	if pubKey == nil {
-		return nil
+		return ""
 	}
 
 	pubKeyBytes := pubKey.SerializeCompressed()
 
-	// get ripemd160 hash
 	hasher := ripemd160.New()
-	_, err := hasher.Write(pubKeyBytes)
-
-	if err != nil {
-		return nil
+	if _, err := hasher.Write(pubKeyBytes); err != nil {
+		return ""
 	}
-
-	// get checksum
 	checksum := hasher.Sum(nil)[:4]
 
-	// append checksum to public key
-
 	pubKeyBytes = append(pubKeyBytes, checksum...)
+	return prefix + base58.Encode(pubKeyBytes)
+}
 
-	// encode to base58
-	encoded := base58.Encode(pubKeyBytes)
-
-	// add prefix
-	encoded = PublicKeyPrefix + encoded
-
-	return &encoded
+// GetPublicKeyString returns the Hive public key string using this KeyPair's public key.
+// Uses the package-level PublicKeyPrefix.
+func (kp *KeyPair) GetPublicKeyString() string {
+	return GetPublicKeyString(kp.PublicKey)
 }

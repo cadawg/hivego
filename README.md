@@ -65,6 +65,107 @@ vests, _ := hivego.ParseAsset("1234.567890 VESTS")
 txid, err := client.Broadcast.ClaimRewards("myaccount", hive, hbd, vests, wif)
 ```
 
+### Post / Comment
+
+```go
+// Top-level post (parentAuthor = "")
+txid, err := client.Broadcast.Comment(
+    "", "hive-blog",       // parentAuthor, parentPermlink (category for top-level posts)
+    "alice", "my-post",   // author, permlink
+    "Hello World",        // title
+    "This is my post.",   // body (markdown)
+    `{"tags":["blog"]}`,  // json_metadata
+    postingWif,
+)
+
+// Reply to a post
+txid, err := client.Broadcast.Comment(
+    "bob", "bobs-post",   // parentAuthor, parentPermlink
+    "alice", "re-bobs-post",
+    "", "Great post!",    // title is empty for replies
+    "{}",
+    postingWif,
+)
+
+// Delete a post (must have no replies, no payout, no net votes)
+txid, err := client.Broadcast.DeleteComment("alice", "my-post", postingWif)
+```
+
+### Post with Beneficiaries
+
+Use `BuildTransaction` to combine a comment with its options in one transaction:
+
+```go
+maxPayout, _ := hivego.ParseAsset("1000000.000 HBD") // no limit
+
+ops := []hivego.HiveOperation{
+    hivego.CommentOperation{
+        Author: "alice", Permlink: "my-post",
+        ParentPermlink: "hive-blog", Title: "Hello", Body: "...",
+        JsonMetadata: `{"tags":["blog"]}`,
+    },
+    hivego.CommentOptionsOperation{
+        Author: "alice", Permlink: "my-post",
+        MaxAcceptedPayout:    maxPayout,
+        PercentHbd:           10000, // 100% HBD rewards
+        AllowVotes:           true,
+        AllowCurationRewards: true,
+        Beneficiaries: []hivego.Beneficiary{
+            {Account: "appdev", Weight: 500}, // 5%
+        },
+    },
+}
+
+tx, _ := client.BuildTransaction(ops)
+client.Sign(tx, postingWif)
+client.BroadcastRaw(tx)
+```
+
+### Hive Power
+
+```go
+// Power up (HIVE → HP)
+amount, _ := hivego.ParseAsset("100.000 HIVE")
+txid, err := client.Broadcast.PowerUp("alice", "alice", amount, activeWif)
+
+// Power down (HP → HIVE over 13 weeks)
+vests, _ := hivego.ParseAsset("100000.000000 VESTS")
+txid, err := client.Broadcast.PowerDown("alice", vests, activeWif)
+
+// Cancel power-down
+zero, _ := hivego.ParseAsset("0.000000 VESTS")
+txid, err := client.Broadcast.PowerDown("alice", zero, activeWif)
+
+// Delegate HP to another account
+vests, _ := hivego.ParseAsset("50000.000000 VESTS")
+txid, err := client.Broadcast.Delegate("alice", "bob", vests, activeWif)
+
+// Remove delegation
+zero, _ := hivego.ParseAsset("0.000000 VESTS")
+txid, err := client.Broadcast.Delegate("alice", "bob", zero, activeWif)
+```
+
+### Witnesses
+
+```go
+// Vote for a witness
+txid, err := client.Broadcast.VoteWitness("alice", "good-witness", true, activeWif)
+
+// Remove witness vote
+txid, err := client.Broadcast.VoteWitness("alice", "good-witness", false, activeWif)
+```
+
+### Savings
+
+```go
+// Move funds to savings (3-day withdrawal delay)
+amount, _ := hivego.ParseAsset("100.000 HBD")
+txid, err := client.Broadcast.TransferToSavings("alice", "alice", amount, "", activeWif)
+
+// Initiate savings withdrawal (requestId must be unique per account)
+txid, err := client.Broadcast.TransferFromSavings("alice", 1, "alice", amount, "", activeWif)
+```
+
 ## Manual Transaction Building
 
 For multi-operation transactions, offline signing, or custom operations:

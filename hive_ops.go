@@ -76,6 +76,176 @@ func (b BroadcastAPI) ClaimRewards(account string, hive, hbd, vests Asset, wif s
 	return b.client.broadcast([]HiveOperation{op}, wif)
 }
 
+// --- Comment operations ---
+
+// CommentOperation creates or edits a post or comment.
+// For a top-level post, set ParentAuthor to "" and ParentPermlink to the category tag.
+// For a reply, set ParentAuthor and ParentPermlink to the parent post's values.
+type CommentOperation struct {
+	ParentAuthor   string `json:"parent_author"`
+	ParentPermlink string `json:"parent_permlink"`
+	Author         string `json:"author"`
+	Permlink       string `json:"permlink"`
+	Title          string `json:"title"`
+	Body           string `json:"body"`
+	JsonMetadata   string `json:"json_metadata"`
+}
+
+func (o CommentOperation) OpName() string { return "comment" }
+
+// Beneficiary is a share of a post's author reward routed to another account.
+// Weight is in basis points out of 10000 (e.g. 500 = 5%).
+// The sum of all beneficiary weights must not exceed 10000.
+type Beneficiary struct {
+	Account string `json:"account"`
+	Weight  uint16 `json:"weight"`
+}
+
+// CommentOptionsOperation sets payout and beneficiary options on a post.
+// It must be submitted in the same transaction as the CommentOperation it targets.
+// Use client.BuildTransaction to combine them.
+//
+// MaxAcceptedPayout: ParseAsset("1000000.000 HBD") for no limit, or ParseAsset("0.000 HBD") to decline.
+// PercentHbd: portion of author reward paid as HBD, in basis points (10000 = 100%).
+type CommentOptionsOperation struct {
+	Author               string        `json:"author"`
+	Permlink             string        `json:"permlink"`
+	MaxAcceptedPayout    Asset         `json:"max_accepted_payout"`
+	PercentHbd           uint16        `json:"percent_hbd"`
+	AllowVotes           bool          `json:"allow_votes"`
+	AllowCurationRewards bool          `json:"allow_curation_rewards"`
+	Beneficiaries        []Beneficiary `json:"beneficiaries"`
+}
+
+func (o CommentOptionsOperation) OpName() string { return "comment_options" }
+
+// DeleteCommentOperation deletes a post or comment.
+// The post must have no replies, no pending payout, and no net votes.
+type DeleteCommentOperation struct {
+	Author   string `json:"author"`
+	Permlink string `json:"permlink"`
+}
+
+func (o DeleteCommentOperation) OpName() string { return "delete_comment" }
+
+// Comment publishes a post or reply.
+// For a top-level post, set parentAuthor to "" and parentPermlink to the category tag.
+func (b BroadcastAPI) Comment(parentAuthor, parentPermlink, author, permlink, title, body, jsonMetadata, wif string) (string, error) {
+	op := CommentOperation{parentAuthor, parentPermlink, author, permlink, title, body, jsonMetadata}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// DeleteComment deletes a post or comment.
+func (b BroadcastAPI) DeleteComment(author, permlink, wif string) (string, error) {
+	op := DeleteCommentOperation{author, permlink}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// --- Vesting (HP) operations ---
+
+// TransferToVestingOperation converts HIVE to Hive Power (HP).
+// Set To to "" to power up to the same account as From.
+type TransferToVestingOperation struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Amount Asset  `json:"amount"`
+}
+
+func (o TransferToVestingOperation) OpName() string { return "transfer_to_vesting" }
+
+// WithdrawVestingOperation initiates a power-down, converting HP back to HIVE over 13 weeks.
+// Set VestingShares to ParseAsset("0.000000 VESTS") to cancel an in-progress power-down.
+type WithdrawVestingOperation struct {
+	Account       string `json:"account"`
+	VestingShares Asset  `json:"vesting_shares"`
+}
+
+func (o WithdrawVestingOperation) OpName() string { return "withdraw_vesting" }
+
+// DelegateVestingSharesOperation delegates HP to another account.
+// Set VestingShares to ParseAsset("0.000000 VESTS") to remove an existing delegation.
+type DelegateVestingSharesOperation struct {
+	Delegator     string `json:"delegator"`
+	Delegatee     string `json:"delegatee"`
+	VestingShares Asset  `json:"vesting_shares"`
+}
+
+func (o DelegateVestingSharesOperation) OpName() string { return "delegate_vesting_shares" }
+
+// PowerUp converts HIVE to Hive Power. Set to "" to power up to the same account as from.
+func (b BroadcastAPI) PowerUp(from, to string, amount Asset, wif string) (string, error) {
+	op := TransferToVestingOperation{from, to, amount}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// PowerDown initiates a 13-week power-down of vestingShares.
+// Use ParseAsset("0.000000 VESTS") to cancel.
+func (b BroadcastAPI) PowerDown(account string, vestingShares Asset, wif string) (string, error) {
+	op := WithdrawVestingOperation{account, vestingShares}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// Delegate delegates vestingShares of HP from delegator to delegatee.
+// Use ParseAsset("0.000000 VESTS") to remove an existing delegation.
+func (b BroadcastAPI) Delegate(delegator, delegatee string, vestingShares Asset, wif string) (string, error) {
+	op := DelegateVestingSharesOperation{delegator, delegatee, vestingShares}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// --- Witness operations ---
+
+// AccountWitnessVoteOperation votes for or removes a vote from a witness.
+type AccountWitnessVoteOperation struct {
+	Account string `json:"account"`
+	Witness string `json:"witness"`
+	Approve bool   `json:"approve"`
+}
+
+func (o AccountWitnessVoteOperation) OpName() string { return "account_witness_vote" }
+
+// VoteWitness approves or removes a vote for a witness.
+func (b BroadcastAPI) VoteWitness(account, witness string, approve bool, wif string) (string, error) {
+	op := AccountWitnessVoteOperation{account, witness, approve}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// --- Savings operations ---
+
+// TransferToSavingsOperation moves HIVE or HBD into the savings balance.
+// Savings have a 3-day withdrawal delay.
+type TransferToSavingsOperation struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Amount Asset  `json:"amount"`
+	Memo   string `json:"memo"`
+}
+
+func (o TransferToSavingsOperation) OpName() string { return "transfer_to_savings" }
+
+// TransferFromSavingsOperation initiates a withdrawal from savings.
+// RequestId must be unique per account — use an incrementing counter.
+type TransferFromSavingsOperation struct {
+	From      string `json:"from"`
+	RequestId uint32 `json:"request_id"`
+	To        string `json:"to"`
+	Amount    Asset  `json:"amount"`
+	Memo      string `json:"memo"`
+}
+
+func (o TransferFromSavingsOperation) OpName() string { return "transfer_from_savings" }
+
+// TransferToSavings moves HIVE or HBD into the savings balance (3-day withdrawal delay).
+func (b BroadcastAPI) TransferToSavings(from, to string, amount Asset, memo, wif string) (string, error) {
+	op := TransferToSavingsOperation{from, to, amount, memo}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
+// TransferFromSavings initiates a savings withdrawal. requestId must be unique per account.
+func (b BroadcastAPI) TransferFromSavings(from string, requestId uint32, to string, amount Asset, memo, wif string) (string, error) {
+	op := TransferFromSavingsOperation{from, requestId, to, amount, memo}
+	return b.client.broadcast([]HiveOperation{op}, wif)
+}
+
 func getHiveOpId(op string) uint64 {
 	return getHiveOpIds()[op+"_operation"]
 }

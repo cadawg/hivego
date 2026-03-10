@@ -150,3 +150,136 @@ func (o ClaimRewardBalanceOperation) SerializeOp() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+func (o CommentOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("comment"))
+	appendVString(o.ParentAuthor, &buf)
+	appendVString(o.ParentPermlink, &buf)
+	appendVString(o.Author, &buf)
+	appendVString(o.Permlink, &buf)
+	appendVString(o.Title, &buf)
+	appendVString(o.Body, &buf)
+	appendVString(o.JsonMetadata, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o CommentOptionsOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("comment_options"))
+	appendVString(o.Author, &buf)
+	appendVString(o.Permlink, &buf)
+	appendAssetBytes(o.MaxAcceptedPayout, &buf)
+
+	pctBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(pctBuf, o.PercentHbd)
+	buf.Write(pctBuf)
+
+	if o.AllowVotes {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	if o.AllowCurationRewards {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+
+	// Extensions: encode beneficiaries if present
+	if len(o.Beneficiaries) > 0 {
+		buf.WriteByte(1) // 1 extension follows
+		buf.WriteByte(0) // type 0: comment_payout_beneficiaries
+		vBuf := make([]byte, 5)
+		vLen := binary.PutUvarint(vBuf, uint64(len(o.Beneficiaries)))
+		buf.Write(vBuf[:vLen])
+		for _, b := range o.Beneficiaries {
+			appendVString(b.Account, &buf)
+			wBuf := make([]byte, 2)
+			binary.LittleEndian.PutUint16(wBuf, b.Weight)
+			buf.Write(wBuf)
+		}
+	} else {
+		buf.WriteByte(0) // no extensions
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (o DeleteCommentOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("delete_comment"))
+	appendVString(o.Author, &buf)
+	appendVString(o.Permlink, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o TransferToVestingOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("transfer_to_vesting"))
+	appendVString(o.From, &buf)
+	appendVString(o.To, &buf)
+	appendAssetBytes(o.Amount, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o WithdrawVestingOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("withdraw_vesting"))
+	appendVString(o.Account, &buf)
+	appendAssetBytes(o.VestingShares, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o DelegateVestingSharesOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("delegate_vesting_shares"))
+	appendVString(o.Delegator, &buf)
+	appendVString(o.Delegatee, &buf)
+	appendAssetBytes(o.VestingShares, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o AccountWitnessVoteOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("account_witness_vote"))
+	appendVString(o.Account, &buf)
+	appendVString(o.Witness, &buf)
+	if o.Approve {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (o TransferToSavingsOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("transfer_to_savings"))
+	appendVString(o.From, &buf)
+	appendVString(o.To, &buf)
+	appendAssetBytes(o.Amount, &buf)
+	appendVString(o.Memo, &buf)
+
+	return buf.Bytes(), nil
+}
+
+func (o TransferFromSavingsOperation) SerializeOp() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(opIdB("transfer_from_savings"))
+	appendVString(o.From, &buf)
+	reqIdBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(reqIdBuf, o.RequestId)
+	buf.Write(reqIdBuf)
+	appendVString(o.To, &buf)
+	appendAssetBytes(o.Amount, &buf)
+	appendVString(o.Memo, &buf)
+
+	return buf.Bytes(), nil
+}

@@ -1,6 +1,6 @@
 # hivego
 
-A Go client library for the [Hive](https://hive.io) blockchain. 80%+ test coverage across unit and integration suites.
+A Go client library for the [Hive](https://hive.io) blockchain.
 
 ## Installation
 
@@ -694,3 +694,18 @@ client.NoBroadcast = true  // dry-run mode: sign but don't submit transactions
 | Multi-op tx | `BroadcastOps(ops, key)` | `TransactionBuilder` | `client.broadcast.sendOperations(...)` |
 | Custom ops | implement `HiveOperation` | extend `Operation` | implement `Operation` |
 | Block streaming | `client.Database.StreamBlocks(ctx, ...)` | `blockchain.stream_from(...)` | loop over `getBlock(...)` |
+
+## Testing
+
+The library has 80%+ test coverage across unit and integration suites.
+
+```sh
+# Unit tests
+go test ./...
+
+# Integration tests (requires network)
+go test -tags integration ./...
+
+# Coverage report for both
+bash scripts/coverage.sh
+```

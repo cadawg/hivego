@@ -1,4 +1,4 @@
-// Package hivego is a Go client library for the Hive blockchain.
+// Package hivego is a Go client library for the Hive blockchain (https://hive.io).
 //
 // It provides:
 //   - Signing and broadcasting transactions (vote, transfer, custom_json, and 40+ other operations)

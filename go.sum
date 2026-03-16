@@ -2,6 +2,8 @@ github.com/andybalholm/brotli v1.2.0 h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwTo
 github.com/andybalholm/brotli v1.2.0/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/cadawg/jsonrpc2client v0.0.0-20260310215851-24f7d3f84674 h1:KhL+iuyuxOcjNpCJ/5xu2NTuFGgu297NT+wPEZhufAM=
 github.com/cadawg/jsonrpc2client v0.0.0-20260310215851-24f7d3f84674/go.mod h1:8Il5f7ESPqqbfRx1XB1YdkGJ4JbB21ZrnwDSkCm5T8A=
+github.com/cadawg/jsonrpc2client v0.1.0 h1:mcVhsyeyrsg4TIN2+zVDzk+7yoIgIg6SE74eqX1AraQ=
+github.com/cadawg/jsonrpc2client v0.1.0/go.mod h1:8Il5f7ESPqqbfRx1XB1YdkGJ4JbB21ZrnwDSkCm5T8A=
 github.com/decred/base58 v1.0.6 h1:NXndBcO+ubGZORV3EulvqeBcMuQM7doqVGa7pBhMOs4=
 github.com/decred/base58 v1.0.6/go.mod h1:KR7Oh9njDPXTagD4P67KJZwroL8jT653u8CffkYqhcQ=
 github.com/decred/dcrd/crypto/blake256 v1.1.0 h1:zPMNGQCm0g4QTY27fOCorQW7EryeQ/U0x++OzVrdms8=

@@ -31,10 +31,10 @@ func TestIntegrationGetBlock(t *testing.T) {
 	if block.Witness == "" {
 		t.Error("block.Witness is empty")
 	}
-	if block.Timestamp == "" {
-		t.Error("block.Timestamp is empty")
+	if block.Timestamp.Time().IsZero() {
+		t.Error("block.Timestamp is zero")
 	}
-	t.Logf("block 1: id=%s witness=%s ts=%s", block.BlockID, block.Witness, block.Timestamp)
+	t.Logf("block 1: id=%s witness=%s ts=%s", block.BlockID, block.Witness, block.Timestamp.Time())
 }
 
 func TestIntegrationGetBlockKnown(t *testing.T) {

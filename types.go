@@ -5,9 +5,39 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
+
+// HiveTime is a time.Time that marshals/unmarshals Hive's timestamp format ("2006-01-02T15:04:05"),
+// which has no timezone suffix and is therefore incompatible with Go's default RFC3339 handling.
+type HiveTime time.Time
+
+const hiveTimeLayout = "2006-01-02T15:04:05"
+
+func (ht *HiveTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	t, err := time.Parse(hiveTimeLayout, s)
+	if err != nil {
+		return err
+	}
+	*ht = HiveTime(t)
+	return nil
+}
+
+func (ht HiveTime) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + time.Time(ht).Format(hiveTimeLayout) + `"`), nil
+}
+
+// Time returns the underlying time.Time value.
+func (ht HiveTime) Time() time.Time { return time.Time(ht) }
+
+// RC holds a resource-credit manabar (voting power, RC, etc.) as returned by the API.
+type RC struct {
+	CurrentMana    int64 `json:"current_mana"`
+	LastUpdateTime int64 `json:"last_update_time"`
+}
 
 // Asset represents a Hive asset amount such as "1.000 HIVE" or "5.321 HBD".
 // Use ParseAsset to create one from a string, or construct directly with Amount, Precision, and Symbol.
@@ -66,7 +96,7 @@ func (a Asset) String() string {
 type Block struct {
 	BlockID               string            `json:"block_id"`
 	Previous              string            `json:"previous"`
-	Timestamp             string            `json:"timestamp"`
+	Timestamp             HiveTime          `json:"timestamp"`
 	Witness               string            `json:"witness"`
 	TransactionMerkleRoot string            `json:"transaction_merkle_root"`
 	WitnessSignature      string            `json:"witness_signature"`
@@ -78,42 +108,66 @@ type Block struct {
 // AccountData holds account information as returned by condenser_api.get_accounts.
 // Balance fields (e.g. Balance, HbdBalance) are returned as strings like "1.000 HIVE";
 // use ParseAsset to convert them if needed.
+// Note: NextVestingWithdrawal is "1969-12-31T23:59:59" when no power-down is active.
 type AccountData struct {
-	ID                     uint32        `json:"id"`
-	Name                   string        `json:"name"`
-	Owner                  AuthorityData `json:"owner"`
-	Active                 AuthorityData `json:"active"`
-	Posting                AuthorityData `json:"posting"`
-	MemoKey                string        `json:"memo_key"`
-	JsonMetadata           string        `json:"json_metadata"`
-	PostingJsonMetadata    string        `json:"posting_json_metadata"`
-	Proxy                  string        `json:"proxy"`
-	Created                string        `json:"created"`
-	Mined                  bool          `json:"mined"`
-	RecoveryAccount        string        `json:"recovery_account"`
-	ResetAccount           string        `json:"reset_account"`
-	PostCount              uint32        `json:"post_count"`
-	CanVote                bool          `json:"can_vote"`
-	Balance                string        `json:"balance"`
-	SavingsBalance         string        `json:"savings_balance"`
-	HbdBalance             string        `json:"hbd_balance"`
-	SavingsHbdBalance      string        `json:"savings_hbd_balance"`
-	RewardHbdBalance       string        `json:"reward_hbd_balance"`
-	RewardHiveBalance      string        `json:"reward_hive_balance"`
-	RewardVestingBalance   string        `json:"reward_vesting_balance"`
-	RewardVestingHive      string        `json:"reward_vesting_hive"`
-	VestingShares          string        `json:"vesting_shares"`
-	DelegatedVestingShares string        `json:"delegated_vesting_shares"`
-	ReceivedVestingShares  string        `json:"received_vesting_shares"`
-	VestingWithdrawRate    string        `json:"vesting_withdraw_rate"`
-	NextVestingWithdrawal  string        `json:"next_vesting_withdrawal"`
-	CurationRewards        int64         `json:"curation_rewards"`
-	PostingRewards         int64         `json:"posting_rewards"`
-	WitnessesVotedFor      uint32        `json:"witnesses_voted_for"`
-	LastPost               string        `json:"last_post"`
-	LastRootPost           string        `json:"last_root_post"`
-	LastVoteTime           string        `json:"last_vote_time"`
-	PendingClaimedAccounts uint32        `json:"pending_claimed_accounts"`
+	ID                            uint32        `json:"id"`
+	Name                          string        `json:"name"`
+	Owner                         AuthorityData `json:"owner"`
+	Active                        AuthorityData `json:"active"`
+	Posting                       AuthorityData `json:"posting"`
+	MemoKey                       string        `json:"memo_key"`
+	JsonMetadata                  string        `json:"json_metadata"`
+	PostingJsonMetadata           string        `json:"posting_json_metadata"`
+	Proxy                         string        `json:"proxy"`
+	LastOwnerUpdate               HiveTime      `json:"last_owner_update"`
+	LastAccountUpdate             HiveTime      `json:"last_account_update"`
+	Created                       HiveTime      `json:"created"`
+	Mined                         bool          `json:"mined"`
+	RecoveryAccount               string        `json:"recovery_account"`
+	ResetAccount                  string        `json:"reset_account"`
+	LastAccountRecovery           HiveTime      `json:"last_account_recovery"`
+	PostCount                     uint32        `json:"post_count"`
+	CanVote                       bool          `json:"can_vote"`
+	VotingPower                   int16         `json:"voting_power"`
+	LastVoteTime                  HiveTime      `json:"last_vote_time"`
+	Balance                       string        `json:"balance"`
+	SavingsBalance                string        `json:"savings_balance"`
+	HbdBalance                    string        `json:"hbd_balance"`
+	HbdSeconds                    string        `json:"hbd_seconds"`
+	HbdSecondsLastUpdate          HiveTime      `json:"hbd_seconds_last_update"`
+	HbdLastInterestPayment        HiveTime      `json:"hbd_last_interest_payment"`
+	SavingsHbdBalance             string        `json:"savings_hbd_balance"`
+	SavingsHbdSeconds             string        `json:"savings_hbd_seconds"`
+	SavingsHbdLastUpdate          HiveTime      `json:"savings_hbd_last_update"`
+	SavingsHbdLastInterestPayment HiveTime      `json:"savings_hbd_last_interest_payment"`
+	SavingsWithdrawRequests       uint32        `json:"savings_withdraw_requests"`
+	RewardHbdBalance              string        `json:"reward_hbd_balance"`
+	RewardHiveBalance             string        `json:"reward_hive_balance"`
+	RewardVestingBalance          string        `json:"reward_vesting_balance"`
+	RewardVestingHive             string        `json:"reward_vesting_hive"`
+	VestingShares                 string        `json:"vesting_shares"`
+	DelegatedVestingShares        string        `json:"delegated_vesting_shares"`
+	ReceivedVestingShares         string        `json:"received_vesting_shares"`
+	VestingWithdrawRate           string        `json:"vesting_withdraw_rate"`
+	NextVestingWithdrawal         HiveTime      `json:"next_vesting_withdrawal"`
+	Withdrawn                     int64         `json:"withdrawn"`
+	ToWithdraw                    int64         `json:"to_withdraw"`
+	WithdrawRoutes                uint32        `json:"withdraw_routes"`
+	CurationRewards               int64         `json:"curation_rewards"`
+	PostingRewards                int64         `json:"posting_rewards"`
+	ProxiedVsfVotes               []int64       `json:"proxied_vsf_votes"`
+	WitnessesVotedFor             uint32        `json:"witnesses_voted_for"`
+	WitnessVotes                  []string      `json:"witness_votes"`
+	LastPost                      HiveTime      `json:"last_post"`
+	LastRootPost                  HiveTime      `json:"last_root_post"`
+	PostVotingPower               string        `json:"post_voting_power"`
+	Reputation                    int64         `json:"reputation"`
+	PendingClaimedAccounts        uint32        `json:"pending_claimed_accounts"`
+	PendingTransfers              uint32        `json:"pending_transfers"`
+	DelayedVotes                  []interface{} `json:"delayed_votes"`
+	VotingManabar                 RC            `json:"voting_manabar"`
+	DownvoteManabar               RC            `json:"downvote_manabar"`
+	GovernanceVoteExpirationTs    HiveTime      `json:"governance_vote_expiration_ts"`
 }
 
 // AuthorityData holds an authority structure as returned by the API (owner, active, or posting).

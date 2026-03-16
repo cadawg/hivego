@@ -3,9 +3,7 @@ package hivego
 import (
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"log"
-	"strconv"
 
 	"github.com/cadawg/jsonrpc2client"
 )
@@ -47,6 +45,15 @@ type HiveRpcNode = Client
 // Nodes are tried in order on failure, providing automatic failover.
 //
 //	client := hivego.NewClient("https://api.hive.blog", "https://rpc.ecency.com")
+//
+// WithNoBroadcast sets the client to dry-run mode: transactions are built and signed
+// but not submitted to the network. The signed Transaction is still returned from
+// broadcast methods so it can be inspected.
+func (h *Client) WithNoBroadcast() *Client {
+	h.NoBroadcast = true
+	return h
+}
+
 func NewClient(nodes ...string) *Client {
 	if len(nodes) == 0 {
 		panic("hivego: at least one node address required")
@@ -88,7 +95,7 @@ func (h *Client) rpcExec(endpoint string, query hrpcQuery) ([]byte, error) {
 		return nil, err
 	}
 	if resp.Error != nil {
-		return nil, errors.New(strconv.Itoa(resp.Error.Code) + "    " + resp.Error.Message)
+		return nil, &RPCError{Code: resp.Error.Code, Message: resp.Error.Message}
 	}
 	return resp.Result, nil
 }

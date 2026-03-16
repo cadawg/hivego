@@ -1,1 +1,5 @@
 .idea
+.venv
+testdata/.venv
+.claude
+*.out

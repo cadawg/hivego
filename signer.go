@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/decred/base58"
@@ -66,13 +66,9 @@ func hashTx(tx []byte) []byte {
 	return digest.Sum(nil)
 }
 
-// SignDigest signs a digest with the given WIF private key using secp256k1 compact signing.
-func SignDigest(digest []byte, wif string) ([]byte, error) {
-	keyPair, err := KeyPairFromWif(wif)
-	if err != nil {
-		return nil, err
-	}
-	return ecdsa.SignCompact(keyPair.PrivateKey, digest, true), nil
+// SignDigest signs a digest with the given KeyPair using secp256k1 compact signing.
+func SignDigest(digest []byte, key *KeyPair) []byte {
+	return ecdsa.SignCompact(key.PrivateKey, digest, true)
 }
 
 // GphBase58CheckDecode decodes a Graphene/Hive base58-encoded string with a double-SHA256 checksum.
@@ -80,14 +76,14 @@ func SignDigest(digest []byte, wif string) ([]byte, error) {
 func GphBase58CheckDecode(input string) ([]byte, [1]byte, error) {
 	decoded := base58.Decode(input)
 	if len(decoded) < 6 {
-		return nil, [1]byte{0}, errors.New("invalid format: version and/or checksum bytes missing")
+		return nil, [1]byte{0}, fmt.Errorf("version and/or checksum bytes missing: %w", ErrInvalidFormat)
 	}
 	version := [1]byte{decoded[0]}
 	dataLen := len(decoded) - 4
 	decodedChecksum := decoded[dataLen:]
 	calculatedChecksum := checksum(decoded[:dataLen])
 	if !bytes.Equal(decodedChecksum, calculatedChecksum[:]) {
-		return nil, [1]byte{0}, errors.New("checksum error")
+		return nil, [1]byte{0}, ErrChecksumMismatch
 	}
 	payload := decoded[1:dataLen]
 	return payload, version, nil

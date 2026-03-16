@@ -2,10 +2,11 @@ package hivego
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 // Asset represents a Hive asset amount such as "1.000 HIVE" or "5.321 HBD".
@@ -20,7 +21,7 @@ type Asset struct {
 func ParseAsset(s string) (Asset, error) {
 	parts := strings.SplitN(strings.TrimSpace(s), " ", 2)
 	if len(parts) != 2 {
-		return Asset{}, errors.New("invalid asset: " + s)
+		return Asset{}, fmt.Errorf("%q: %w", s, ErrInvalidAsset)
 	}
 	symbol := parts[1]
 	numStr := parts[0]
@@ -115,9 +116,60 @@ type AccountData struct {
 	PendingClaimedAccounts uint32        `json:"pending_claimed_accounts"`
 }
 
-// AuthorityData holds an authority structure (owner, active, or posting).
+// AuthorityData holds an authority structure as returned by the API (owner, active, or posting).
 type AuthorityData struct {
 	WeightThreshold uint32          `json:"weight_threshold"`
 	AccountAuths    [][]interface{} `json:"account_auths"`
 	KeyAuths        [][]interface{} `json:"key_auths"`
+}
+
+// Price represents an exchange rate between two assets (e.g. for witness feed publishing).
+type Price struct {
+	Base  Asset `json:"base"`
+	Quote Asset `json:"quote"`
+}
+
+// ChainProperties represents witness-reported blockchain configuration for witness_update.
+type ChainProperties struct {
+	AccountCreationFee Asset  `json:"account_creation_fee"`
+	MaximumBlockSize   uint32 `json:"maximum_block_size"`
+	HbdInterestRate    uint16 `json:"hbd_interest_rate"`
+}
+
+// AccountAuth is an account name paired with a weight for use in an Authority.
+type AccountAuth struct {
+	Account string
+	Weight  uint16
+}
+
+// KeyAuth is a public key paired with a weight for use in an Authority.
+type KeyAuth struct {
+	Key    *secp256k1.PublicKey
+	Weight uint16
+}
+
+// Authority defines the signing requirements for an account action.
+// Use in AccountUpdate2Operation to change owner, active, or posting authorities.
+type Authority struct {
+	WeightThreshold uint32
+	AccountAuths    []AccountAuth
+	KeyAuths        []KeyAuth
+}
+
+// MarshalJSON encodes Authority in the format the Hive node expects:
+// account_auths and key_auths as [name/key-string, weight] tuple arrays.
+func (a Authority) MarshalJSON() ([]byte, error) {
+	accountAuths := make([][2]interface{}, len(a.AccountAuths))
+	for i, aa := range a.AccountAuths {
+		accountAuths[i] = [2]interface{}{aa.Account, aa.Weight}
+	}
+	keyAuths := make([][2]interface{}, len(a.KeyAuths))
+	for i, ka := range a.KeyAuths {
+		keyAuths[i] = [2]interface{}{GetPublicKeyString(ka.Key), ka.Weight}
+	}
+	return json.Marshal(struct {
+		WeightThreshold uint32           `json:"weight_threshold"`
+		AccountAuths    [][2]interface{} `json:"account_auths"`
+		KeyAuths        [][2]interface{} `json:"key_auths"`
+	}{a.WeightThreshold, accountAuths, keyAuths})
 }

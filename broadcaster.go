@@ -56,25 +56,31 @@ func (h *Client) BuildTransaction(ops []HiveOperation) (*Transaction, error) {
 	}, nil
 }
 
-// Sign signs the transaction with the given WIF key and appends the signature.
+// Sign signs the transaction with the given KeyPair and appends the signature.
 // The client's ChainID is used (Hive mainnet by default; override with client.ChainID).
-// Does not broadcast — call BroadcastRaw when ready.
-func (h *Client) Sign(tx *Transaction, wif string) error {
+// Does not broadcast — call BroadcastTx when ready.
+func (h *Client) Sign(tx *Transaction, key *KeyPair) error {
+	if key == nil {
+		return ErrNilKey
+	}
 	message, err := serializeTx(*tx)
 	if err != nil {
 		return err
 	}
 	digest := hashTxForSig(message, h.chainIDBytes())
-	sig, err := SignDigest(digest, wif)
-	if err != nil {
-		return err
-	}
-	tx.Signatures = append(tx.Signatures, hex.EncodeToString(sig))
+	tx.Signatures = append(tx.Signatures, hex.EncodeToString(SignDigest(digest, key)))
 	return nil
 }
 
-// BroadcastRaw submits a pre-built, pre-signed Transaction to the network.
-func (h *Client) BroadcastRaw(tx *Transaction) error {
+// Serialize returns the binary representation of the transaction as it is signed.
+// This is the canonical wire format: the same bytes that are hashed and signed,
+// and that the node independently re-serializes to verify signatures.
+func (t *Transaction) Serialize() ([]byte, error) {
+	return serializeTx(*t)
+}
+
+// BroadcastTx submits a pre-built, pre-signed Transaction to the network.
+func (h *Client) BroadcastTx(tx *Transaction) error {
 	tx.prepareJson()
 	var params []interface{}
 	params = append(params, tx)
@@ -83,26 +89,30 @@ func (h *Client) BroadcastRaw(tx *Transaction) error {
 	return err
 }
 
-func (h *Client) broadcast(ops []HiveOperation, wif string) (string, error) {
+// BroadcastOps builds a transaction from ops, signs it with key, and submits it to the network.
+// It is a convenience wrapper around BuildTransaction, Sign, and BroadcastTx.
+// Returns the signed transaction, the transaction ID, and any error.
+// If NoBroadcast is set, the transaction is built and signed but not submitted.
+func (h *Client) BroadcastOps(ops []HiveOperation, key *KeyPair) (*Transaction, string, error) {
 	tx, err := h.BuildTransaction(ops)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	txId, err := tx.GenerateTrxId()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	if err := h.Sign(tx, wif); err != nil {
-		return "", err
+	if err := h.Sign(tx, key); err != nil {
+		return nil, "", err
 	}
 
 	if !h.NoBroadcast {
-		if err := h.BroadcastRaw(tx); err != nil {
-			return "", err
+		if err := h.BroadcastTx(tx); err != nil {
+			return nil, "", err
 		}
 	}
 
-	return txId, nil
+	return tx, txId, nil
 }

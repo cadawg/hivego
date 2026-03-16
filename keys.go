@@ -2,7 +2,6 @@ package hivego
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/decred/base58"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -35,7 +34,7 @@ func KeyPairFromWif(wif string) (*KeyPair, error) {
 // KeyPairFromBytes creates a KeyPair from a raw 32-byte private key.
 func KeyPairFromBytes(privKeyBytes []byte) (*KeyPair, error) {
 	if len(privKeyBytes) != 32 {
-		return nil, errors.New("private key must be 32 bytes")
+		return nil, ErrInvalidKeyLength
 	}
 	prvKey := secp256k1.PrivKeyFromBytes(privKeyBytes)
 	return &KeyPair{prvKey, prvKey.PubKey()}, nil
@@ -50,12 +49,12 @@ func DecodePublicKey(pubKey string) (*secp256k1.PublicKey, error) {
 // DecodePublicKeyWithPrefix decodes a Hive public key string with a specific prefix (e.g. "TST").
 func DecodePublicKeyWithPrefix(pubKey, prefix string) (*secp256k1.PublicKey, error) {
 	if len(pubKey) < len(prefix) || pubKey[:len(prefix)] != prefix {
-		return nil, errors.New("invalid prefix")
+		return nil, ErrInvalidPrefix
 	}
 
 	decoded := base58.Decode(pubKey[len(prefix):])
 	if len(decoded) < 4 {
-		return nil, errors.New("invalid public key")
+		return nil, ErrInvalidPublicKey
 	}
 
 	pubKeyBytes := decoded[:len(decoded)-4]
@@ -66,7 +65,7 @@ func DecodePublicKeyWithPrefix(pubKey, prefix string) (*secp256k1.PublicKey, err
 		return nil, err
 	}
 	if !bytes.Equal(checksum, hasher.Sum(nil)[:4]) {
-		return nil, errors.New("checksums do not match")
+		return nil, ErrChecksumMismatch
 	}
 
 	return secp256k1.ParsePubKey(pubKeyBytes)

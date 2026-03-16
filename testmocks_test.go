@@ -39,11 +39,3 @@ func getTestTx(ops []HiveOperation) Transaction {
 func getTestVoteTx() Transaction {
 	return getTestTx([]HiveOperation{getTestVoteOp()})
 }
-
-func getTestCustomJsonTx() Transaction {
-	return getTestTx([]HiveOperation{getTestCustomJsonOp()})
-}
-
-func getTestMultipleOpsTx() Transaction {
-	return getTestTx(getTwoTestOps())
-}

@@ -1,0 +1,221 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --accent:   #e05c35;
+  --accent2:  #58a6ff;
+  --code-bg:  #1a2030;
+  --radius:   6px;
+
+  --kw:   #ff7b72;
+  --str:  #a5d6ff;
+  --num:  #79c0ff;
+  --cm:   #8b949e;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+a { color: var(--accent2); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ── Header ── */
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 2.5rem 0 2rem;
+}
+
+.header-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+
+nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+
+.tagline {
+  font-size: 1.1rem;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+}
+
+.tagline a { color: var(--accent2); }
+
+.install {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.875rem;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.install button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+}
+.install button:hover { color: var(--text); }
+
+.badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.badges img { height: 20px; }
+
+/* ── Main sections ── */
+
+main { padding: 3rem 0; display: flex; flex-direction: column; gap: 3rem; }
+
+section h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.6rem;
+}
+
+/* ── Feature grid ── */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  list-style: none;
+}
+
+.feature-grid li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.feature-grid li strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+  font-size: 0.95rem;
+}
+
+/* ── Code blocks ── */
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+pre code { color: var(--text); }
+
+.kw  { color: var(--kw); }
+.str { color: var(--str); }
+.num { color: var(--num); }
+.cm  { color: var(--cm); font-style: italic; }
+
+/* ── Operations grid ── */
+
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.op-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+
+.op-group ul { list-style: none; }
+
+.op-group li {
+  font-size: 0.82rem;
+  padding: 0.15rem 0;
+  color: var(--muted);
+}
+
+.op-group li code {
+  color: var(--accent2);
+  font-size: 0.82rem;
+}
+
+.op-note {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ── Footer ── */
+
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 600px) {
+  h1 { font-size: 1.6rem; }
+  .header-top { flex-direction: column; }
+  .op-grid { grid-template-columns: 1fr 1fr; }
+}

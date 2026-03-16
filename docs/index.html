@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hivego — Go client library for the Hive blockchain</title>
+  <meta name="description" content="hivego is a Go client library for the Hive blockchain. Sign and broadcast transactions, read blocks and accounts, manage keys — with 80%+ test coverage and zero CGo." />
+  <meta property="og:title" content="hivego — Go client library for the Hive blockchain" />
+  <meta property="og:description" content="Sign and broadcast Hive transactions in Go. Supports 40+ operations, multi-node failover, dry-run mode, and binary serialization for local signing." />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="https://cadawg.github.io/hivego/" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-top">
+        <h1>hivego</h1>
+        <nav>
+          <a href="https://pkg.go.dev/github.com/cadawg/hivego" target="_blank" rel="noopener">pkg.go.dev</a>
+          <a href="https://github.com/cadawg/hivego" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+      <p class="tagline">A Go client library for the <a href="https://hive.io" target="_blank" rel="noopener">Hive blockchain</a>.</p>
+      <div class="install">
+        <code>go get github.com/cadawg/hivego</code>
+        <button onclick="navigator.clipboard.writeText('go get github.com/cadawg/hivego')" title="Copy">&#x2398;</button>
+      </div>
+      <div class="badges">
+        <a href="https://pkg.go.dev/github.com/cadawg/hivego" target="_blank" rel="noopener"><img src="https://pkg.go.dev/badge/github.com/cadawg/hivego.svg" alt="Go Reference" /></a>
+        <img src="https://img.shields.io/badge/coverage-80%25%2B-brightgreen" alt="80%+ test coverage" />
+        <img src="https://img.shields.io/badge/go-1.24%2B-blue" alt="Go 1.24+" />
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section id="features">
+      <h2>Features</h2>
+      <ul class="feature-grid">
+        <li>
+          <strong>40+ operations</strong>
+          Vote, transfer, custom_json, power up/down, escrow, proposals, witness management, account recovery, and more.
+        </li>
+        <li>
+          <strong>Multi-node failover</strong>
+          Pass multiple API nodes — requests fall through to the next on error automatically.
+        </li>
+        <li>
+          <strong>Local signing</strong>
+          Transactions are binary-serialized and signed locally. Private keys never leave your process.
+        </li>
+        <li>
+          <strong>Dry-run mode</strong>
+          Build and sign transactions without broadcasting. Inspect the wire format before submitting.
+        </li>
+        <li>
+          <strong>Block streaming</strong>
+          Stream blocks sequentially from any starting point with automatic polling at the chain head.
+        </li>
+        <li>
+          <strong>80%+ test coverage</strong>
+          Unit tests with beem-verified serialization vectors, plus integration tests against a live node.
+        </li>
+      </ul>
+    </section>
+
+    <section id="quickstart">
+      <h2>Quick start</h2>
+      <pre><code><span class="kw">import</span> <span class="str">"github.com/cadawg/hivego"</span>
+
+<span class="cm">// Connect to one or more API nodes (automatic failover)</span>
+client := hivego.NewClient(
+    <span class="str">"https://api.hive.blog"</span>,
+    <span class="str">"https://api.deathwing.me"</span>,
+)
+
+<span class="cm">// Load a key from WIF once at the boundary</span>
+key, err := hivego.KeyPairFromWif(<span class="str">"5J..."</span>)
+
+<span class="cm">// Vote on a post</span>
+_, txid, err := client.Broadcast.Vote(<span class="str">"voter"</span>, <span class="str">"author"</span>, <span class="str">"permlink"</span>, <span class="num">10000</span>, key)
+
+<span class="cm">// Transfer HIVE</span>
+amount, _ := hivego.ParseAsset(<span class="str">"1.000 HIVE"</span>)
+_, txid, err = client.Broadcast.Transfer(<span class="str">"alice"</span>, <span class="str">"bob"</span>, amount, <span class="str">"memo"</span>, key)
+
+<span class="cm">// Read a block</span>
+block, err := client.Database.GetBlock(<span class="num">88000000</span>)
+fmt.Println(block.Witness, block.Timestamp.Time())</code></pre>
+    </section>
+
+    <section id="operations">
+      <h2>Supported operations</h2>
+      <p>All operations are available as structs implementing <code>HiveOperation</code>, with convenience methods on <code>client.Broadcast</code>:</p>
+      <div class="op-grid">
+        <div class="op-group">
+          <h3>Social</h3>
+          <ul>
+            <li><code>vote</code></li>
+            <li><code>comment</code></li>
+            <li><code>comment_options</code></li>
+            <li><code>delete_comment</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Transfers</h3>
+          <ul>
+            <li><code>transfer</code></li>
+            <li><code>recurrent_transfer</code></li>
+            <li><code>transfer_to_savings</code></li>
+            <li><code>transfer_from_savings</code></li>
+            <li><code>cancel_transfer_from_savings</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Hive Power</h3>
+          <ul>
+            <li><code>transfer_to_vesting</code></li>
+            <li><code>withdraw_vesting</code></li>
+            <li><code>delegate_vesting_shares</code></li>
+            <li><code>set_withdraw_vesting_route</code></li>
+            <li><code>claim_reward_balance</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Market</h3>
+          <ul>
+            <li><code>convert</code></li>
+            <li><code>collateralized_convert</code></li>
+            <li><code>limit_order_create</code></li>
+            <li><code>limit_order_cancel</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Accounts</h3>
+          <ul>
+            <li><code>account_create</code></li>
+            <li><code>create_claimed_account</code></li>
+            <li><code>claim_account</code></li>
+            <li><code>account_update</code></li>
+            <li><code>account_update2</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Witnesses</h3>
+          <ul>
+            <li><code>witness_update</code></li>
+            <li><code>witness_set_properties</code></li>
+            <li><code>account_witness_vote</code></li>
+            <li><code>account_witness_proxy</code></li>
+            <li><code>feed_publish</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Proposals (DHF)</h3>
+          <ul>
+            <li><code>create_proposal</code></li>
+            <li><code>update_proposal</code></li>
+            <li><code>update_proposal_votes</code></li>
+            <li><code>remove_proposal</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Recovery &amp; Escrow</h3>
+          <ul>
+            <li><code>request_account_recovery</code></li>
+            <li><code>recover_account</code></li>
+            <li><code>change_recovery_account</code></li>
+            <li><code>escrow_transfer</code></li>
+            <li><code>escrow_approve</code></li>
+            <li><code>escrow_dispute</code></li>
+            <li><code>escrow_release</code></li>
+          </ul>
+        </div>
+        <div class="op-group">
+          <h3>Custom</h3>
+          <ul>
+            <li><code>custom_json</code></li>
+            <li><code>custom</code></li>
+            <li><code>custom_binary</code></li>
+            <li><code>decline_voting_rights</code></li>
+          </ul>
+        </div>
+      </div>
+      <p class="op-note">Need an operation not listed? Implement the <code>HiveOperation</code> interface and pass it to <code>client.BroadcastOps</code>.</p>
+    </section>
+
+    <section id="examples">
+      <h2>More examples</h2>
+
+      <h3>Multi-operation transactions</h3>
+      <pre><code><span class="cm">// comment + comment_options must be in the same transaction</span>
+maxPayout, _ := hivego.ParseAsset(<span class="str">"1000000.000 HBD"</span>)
+ops := []hivego.HiveOperation{
+    hivego.CommentOperation{
+        Author: <span class="str">"alice"</span>, Permlink: <span class="str">"my-post"</span>,
+        ParentPermlink: <span class="str">"hive-blog"</span>,
+        Title: <span class="str">"Hello Hive"</span>, Body: <span class="str">"..."</span>,
+        JsonMetadata: <span class="str">`{"tags":["blog"]}`</span>,
+    },
+    hivego.CommentOptionsOperation{
+        Author: <span class="str">"alice"</span>, Permlink: <span class="str">"my-post"</span>,
+        MaxAcceptedPayout: maxPayout,
+        PercentHbd: <span class="num">10000</span>, AllowVotes: <span class="kw">true</span>, AllowCurationRewards: <span class="kw">true</span>,
+        Beneficiaries: []hivego.Beneficiary{{Account: <span class="str">"appdev"</span>, Weight: <span class="num">500</span>}},
+    },
+}
+_, txid, err := client.BroadcastOps(ops, postingKey)</code></pre>
+
+      <h3>Dry-run / inspect transactions</h3>
+      <pre><code>client := hivego.NewClient(<span class="str">"https://api.hive.blog"</span>).WithNoBroadcast()
+
+tx, txid, err := client.Broadcast.Vote(<span class="str">"voter"</span>, <span class="str">"author"</span>, <span class="str">"permlink"</span>, <span class="num">10000</span>, key)
+fmt.Println(<span class="str">"txid:"</span>, txid)
+
+b, _ := tx.Serialize()
+fmt.Printf(<span class="str">"wire: %x\n"</span>, b)</code></pre>
+
+      <h3>Stream blocks</h3>
+      <pre><code>ctx, cancel := context.WithCancel(context.Background())
+<span class="kw">defer</span> cancel()
+
+blocks, errc := client.Database.StreamBlocks(ctx, <span class="num">88000000</span>, <span class="num">3</span>*time.Second)
+<span class="kw">for</span> block := <span class="kw">range</span> blocks {
+    fmt.Println(block.BlockID, block.Timestamp.Time())
+}
+<span class="kw">if</span> err := &lt;-errc; err != <span class="kw">nil</span> {
+    log.Fatal(err)
+}</code></pre>
+
+      <h3>Testnet</h3>
+      <pre><code>client := hivego.NewClient(<span class="str">"https://testnet.openhive.network"</span>)
+client.ChainID = <span class="str">"18dcf0a285365fc58b71f18b3d3fec954aa0c141c44e4e5cb4cf777b9eab274e"</span>
+client.PublicKeyPrefix = <span class="str">"TST"</span></code></pre>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling</h2>
+      <pre><code><span class="cm">// Sentinel errors — use errors.Is</span>
+<span class="kw">if</span> errors.Is(err, hivego.ErrChecksumMismatch) { ... }
+<span class="kw">if</span> errors.Is(err, hivego.ErrInvalidAsset)     { ... }
+
+<span class="cm">// RPC errors from the node — use errors.As</span>
+<span class="kw">var</span> rpcErr *hivego.RPCError
+<span class="kw">if</span> errors.As(err, &amp;rpcErr) {
+    fmt.Println(rpcErr.Code, rpcErr.Message)
+}</code></pre>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>
+        hivego is open source under the MIT licence &mdash;
+        <a href="https://github.com/cadawg/hivego" target="_blank" rel="noopener">GitHub</a> &middot;
+        <a href="https://pkg.go.dev/github.com/cadawg/hivego" target="_blank" rel="noopener">pkg.go.dev</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

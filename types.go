@@ -10,8 +10,9 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-// HiveTime is a time.Time that marshals/unmarshals Hive's timestamp format ("2006-01-02T15:04:05"),
-// which has no timezone suffix and is therefore incompatible with Go's default RFC3339 handling.
+// HiveTime is a [time.Time] that marshals/unmarshals Hive's timestamp format ("2006-01-02T15:04:05").
+// Hive timestamps carry no timezone suffix and are always UTC, making them incompatible with
+// Go's default RFC3339 JSON handling. Use [HiveTime.Time] to get the underlying [time.Time].
 type HiveTime time.Time
 
 const hiveTimeLayout = "2006-01-02T15:04:05"
@@ -33,14 +34,19 @@ func (ht HiveTime) MarshalJSON() ([]byte, error) {
 // Time returns the underlying time.Time value.
 func (ht HiveTime) Time() time.Time { return time.Time(ht) }
 
-// RC holds a resource-credit manabar (voting power, RC, etc.) as returned by the API.
+// RC holds a resource-credit manabar as returned by the API (e.g. VotingManabar, DownvoteManabar).
+// CurrentMana is in raw units (not percentage); divide by the account's VestingShares to get
+// the effective percentage. LastUpdateTime is a Unix timestamp.
 type RC struct {
 	CurrentMana    int64 `json:"current_mana"`
 	LastUpdateTime int64 `json:"last_update_time"`
 }
 
 // Asset represents a Hive asset amount such as "1.000 HIVE" or "5.321 HBD".
-// Use ParseAsset to create one from a string, or construct directly with Amount, Precision, and Symbol.
+// Use [ParseAsset] to create one from a string. The binary serializer requires all three
+// fields, so constructing an Asset directly is only needed for zero values or test fixtures.
+//
+// Precisions: HIVE and HBD use 3 decimal places; VESTS uses 6.
 type Asset struct {
 	Amount    int64
 	Precision uint8
@@ -92,7 +98,8 @@ func (a Asset) String() string {
 }
 
 // Block represents a Hive block as returned by block_api.get_block.
-// Transactions are returned as raw JSON; use json.Unmarshal to decode individual transactions.
+// Transactions are raw JSON — unmarshal them individually based on the operation types you care about.
+// TransactionIDs is populated when the block is fetched with transaction IDs included.
 type Block struct {
 	BlockID               string            `json:"block_id"`
 	Previous              string            `json:"previous"`

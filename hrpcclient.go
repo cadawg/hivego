@@ -11,23 +11,33 @@ import (
 // HiveMainnetChainID is the chain ID for Hive mainnet.
 const HiveMainnetChainID = "beeab0de00000000000000000000000000000000000000000000000000000000"
 
-// Client is the Hive blockchain RPC client.
+// Client is the Hive blockchain RPC client. Create one with [NewClient].
 //
-//	client := hivego.NewClient("https://api.hive.blog", "https://rpc.ecency.com")
-//	txid, err  := client.Broadcast.Vote(...)
-//	block, err := client.Database.GetBlock(...)
+// The two namespaces cover all common use cases:
+//
+//	client.Broadcast  — sign and submit operations (vote, transfer, custom_json, …)
+//	client.Database   — read blocks, accounts, and chain state
 type Client struct {
 	// Broadcast provides methods for submitting operations to the blockchain.
 	Broadcast BroadcastAPI
 	// Database provides methods for reading data from the blockchain.
 	Database DatabaseAPI
 
-	nodes           []string
-	MaxConn         int
-	MaxBatch        int
-	NoBroadcast     bool
-	ChainID         string // hex-encoded chain ID; defaults to HiveMainnetChainID
-	PublicKeyPrefix string // public key prefix; defaults to "STM"
+	nodes []string
+
+	// MaxConn is the maximum number of concurrent HTTP connections per node (default 1).
+	MaxConn int
+	// MaxBatch is the maximum number of requests per JSON-RPC batch call (default 4).
+	MaxBatch int
+	// NoBroadcast enables dry-run mode: transactions are built and signed but not submitted.
+	// Prefer using [Client.WithNoBroadcast] to set this.
+	NoBroadcast bool
+	// ChainID is the hex-encoded chain ID used when signing transactions.
+	// Defaults to [HiveMainnetChainID]. Override for testnet or custom chains.
+	ChainID string
+	// PublicKeyPrefix is the prefix used when encoding/decoding public key strings.
+	// Defaults to "STM". Set to "TST" for the Hive public testnet.
+	PublicKeyPrefix string
 }
 
 // BroadcastAPI provides methods for submitting signed operations to the Hive blockchain.
@@ -39,21 +49,15 @@ type BroadcastAPI struct{ client *Client }
 type DatabaseAPI struct{ client *Client }
 
 // HiveRpcNode is an alias for Client for backward compatibility.
+//
+// Deprecated: Use [Client] directly.
 type HiveRpcNode = Client
 
-// NewClient creates a Client connecting to one or more API node addresses.
-// Nodes are tried in order on failure, providing automatic failover.
+// NewClient creates a Client that connects to one or more Hive API node addresses.
+// Requests are tried against each node in order, falling through to the next on error,
+// providing automatic failover.
 //
-//	client := hivego.NewClient("https://api.hive.blog", "https://rpc.ecency.com")
-//
-// WithNoBroadcast sets the client to dry-run mode: transactions are built and signed
-// but not submitted to the network. The signed Transaction is still returned from
-// broadcast methods so it can be inspected.
-func (h *Client) WithNoBroadcast() *Client {
-	h.NoBroadcast = true
-	return h
-}
-
+//	client := hivego.NewClient("https://api.hive.blog", "https://api.deathwing.me")
 func NewClient(nodes ...string) *Client {
 	if len(nodes) == 0 {
 		panic("hivego: at least one node address required")
@@ -68,6 +72,14 @@ func NewClient(nodes ...string) *Client {
 	c.Broadcast = BroadcastAPI{c}
 	c.Database = DatabaseAPI{c}
 	return c
+}
+
+// WithNoBroadcast sets the client to dry-run mode: transactions are built and signed but not
+// submitted to the network. The signed [Transaction] is still returned so it can be inspected,
+// serialized, or logged.
+func (h *Client) WithNoBroadcast() *Client {
+	h.NoBroadcast = true
+	return h
 }
 
 func (h *Client) chainIDBytes() []byte {

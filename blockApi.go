@@ -12,12 +12,15 @@ type getBlockRangeQueryParams struct {
 }
 
 // GetDynamicGlobalProperties returns the current dynamic global properties as raw JSON.
+// The result includes the head block number, head block ID, current supply, and other
+// chain-wide state. Unmarshal into a struct of your choosing for specific fields.
 func (d DatabaseAPI) GetDynamicGlobalProperties() ([]byte, error) {
 	q := hrpcQuery{method: "condenser_api.get_dynamic_global_properties", params: []string{}}
 	return d.client.rpcExecWithFailover(q)
 }
 
-// GetBlock fetches a single typed Block by block number.
+// GetBlock fetches a single block by block number and returns it as a typed [Block].
+// Returns nil (with no error) if the block does not yet exist on the chain.
 func (d DatabaseAPI) GetBlock(blockNum int) (*Block, error) {
 	type blockParams struct {
 		BlockNum int `json:"block_num"`
@@ -38,8 +41,13 @@ func (d DatabaseAPI) GetBlock(blockNum int) (*Block, error) {
 	return resp.Block, nil
 }
 
-// GetBlockRange fetches a range of blocks starting at startBlock, returning raw JSON.
-// Results are batched in groups of 500. For typed results use GetBlock or StreamBlocks.
+// GetBlockRange fetches count blocks starting at startBlock and returns each as a
+// [json.RawMessage]. Requests are batched internally in groups of 500.
+// For a single typed block use [DatabaseAPI.GetBlock]; for continuous streaming use
+// [DatabaseAPI.StreamBlocks]. For maximum throughput use [DatabaseAPI.GetBlockRangeFast].
+//
+// Note: do not run bulk block fetching against public API nodes at high request rates.
+// Use a dedicated node for block processing workloads.
 func (d DatabaseAPI) GetBlockRange(startBlock int, count int) ([]json.RawMessage, error) {
 	if d.client.MaxConn == 0 {
 		d.client.MaxConn = 10
@@ -58,8 +66,9 @@ func (d DatabaseAPI) GetBlockRange(startBlock int, count int) ([]json.RawMessage
 	return d.client.rpcExecBatch(d.client.nodes[0], queries)
 }
 
-// GetBlockRangeFast fetches a range of blocks starting at startBlock, returning raw bytes.
-// Results are batched in groups of 500.
+// GetBlockRangeFast fetches count blocks starting at startBlock and returns each as raw bytes.
+// Requests are batched internally in groups of 500. This is the fastest option for
+// high-throughput block processing — skip JSON parsing entirely and handle the bytes directly.
 func (d DatabaseAPI) GetBlockRangeFast(startBlock int, count int) ([][]byte, error) {
 	if d.client.MaxConn == 0 {
 		d.client.MaxConn = 10

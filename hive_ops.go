@@ -9,7 +9,10 @@ import (
 )
 
 // HiveOperation is the interface implemented by all Hive blockchain operations.
-// Implement this interface to create custom operations for use with BuildTransaction.
+// Implement this interface to broadcast operations not built into the library.
+//
+// SerializeOp returns the binary representation used for local signing.
+// OpName returns the Hive operation type name (e.g. "vote", "custom_json").
 type HiveOperation interface {
 	SerializeOp() ([]byte, error)
 	OpName() string
@@ -308,7 +311,9 @@ type RecurrentTransferOperation struct {
 
 func (o RecurrentTransferOperation) OpName() string { return "recurrent_transfer" }
 
-// RecurrentTransfer schedules a recurring transfer. recurrence is hours between transfers, executions is how many times (min 2).
+// RecurrentTransfer schedules a recurring transfer of HIVE or HBD.
+// recurrence is the number of hours between each execution; executions is the total number of
+// transfers (minimum 2). To cancel, set amount to zero and executions to 2.
 func (b BroadcastAPI) RecurrentTransfer(from, to string, amount Asset, memo string, recurrence, executions uint16, key *KeyPair) (*Transaction, string, error) {
 	op := RecurrentTransferOperation{from, to, amount, memo, recurrence, executions}
 	return b.client.BroadcastOps([]HiveOperation{op}, key)
@@ -545,7 +550,9 @@ func (b BroadcastAPI) ClaimAccount(creator string, fee Asset, key *KeyPair) (*Tr
 
 // --- Price feed ---
 
-// FeedPublishOperation publishes a HIVE/HBD price feed. Witnesses only.
+// FeedPublishOperation publishes a HIVE/HBD price feed for consensus. Witnesses only.
+// ExchangeRate.Base should be HBD and ExchangeRate.Quote should be HIVE, representing
+// the price of 1 HBD in HIVE (e.g. base="1.000 HBD", quote="3.500 HIVE" means 1 HBD = 3.5 HIVE).
 type FeedPublishOperation struct {
 	Publisher    string `json:"publisher"`
 	ExchangeRate Price  `json:"exchange_rate"`
@@ -553,7 +560,8 @@ type FeedPublishOperation struct {
 
 func (o FeedPublishOperation) OpName() string { return "feed_publish" }
 
-// FeedPublish publishes a price feed. base and quote form the exchange rate (witnesses only).
+// FeedPublish publishes a HIVE/HBD price feed. base should be HBD, quote should be HIVE.
+// Only witnesses with an active signing key should call this.
 func (b BroadcastAPI) FeedPublish(publisher string, base, quote Asset, key *KeyPair) (*Transaction, string, error) {
 	op := FeedPublishOperation{publisher, Price{base, quote}}
 	return b.client.BroadcastOps([]HiveOperation{op}, key)
@@ -637,9 +645,9 @@ func (b BroadcastAPI) CreateClaimedAccount(creator, newAccountName string, owner
 
 // --- Account update (legacy) ---
 
-// AccountUpdateOperation updates account authorities and memo key.
-// All authority fields are optional; MemoKey is required.
-// For metadata-only updates, prefer UpdateAccount (account_update2).
+// AccountUpdateOperation updates account authorities and memo key (legacy account_update operation).
+// All authority fields are optional — set to nil to leave unchanged. MemoKey is required.
+// For metadata-only updates (json_metadata, posting_json_metadata), prefer [AccountUpdate2Operation].
 type AccountUpdateOperation struct {
 	Account      string               `json:"-"`
 	Owner        *Authority           `json:"-"`

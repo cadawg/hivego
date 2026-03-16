@@ -10,12 +10,13 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
-// PublicKeyPrefix is the default prefix for Hive public key strings.
-// Override on a per-client basis via client.PublicKeyPrefix.
-// Set to "TST" when working with the Hive public testnet.
+// PublicKeyPrefix is the package-level default prefix for public key strings (e.g. "STM7...").
+// This is used by [GetPublicKeyString] and [DecodePublicKey].
+// Override per-client via [Client.PublicKeyPrefix]; set to "TST" for the Hive public testnet.
 var PublicKeyPrefix = "STM"
 
-// KeyPair holds a secp256k1 private/public key pair.
+// KeyPair holds a secp256k1 private/public key pair derived from a Hive WIF private key.
+// Create one with [KeyPairFromWif] or [KeyPairFromBytes] and pass it to broadcast methods.
 type KeyPair struct {
 	PrivateKey *secp256k1.PrivateKey
 	PublicKey  *secp256k1.PublicKey

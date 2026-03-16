@@ -5,16 +5,22 @@ import (
 )
 
 // Transaction is a Hive blockchain transaction, ready for signing and broadcasting.
-// Use BuildTransaction to create one from a set of operations, or construct it directly
-// for offline/multi-sig workflows.
+// Use [Client.BuildTransaction] to create one from a set of operations, or construct it
+// directly for offline or multi-sig workflows.
+//
+// Operations holds the typed operations for signing and serialization.
+// OperationsJs is populated by the broadcast path and holds the JSON representation
+// that is sent to the node; it is built automatically and should not be set manually.
 type Transaction struct {
-	RefBlockNum    uint16           `json:"ref_block_num"`
-	RefBlockPrefix uint32           `json:"ref_block_prefix"`
-	Expiration     string           `json:"expiration"`
-	Operations     []HiveOperation  `json:"-"`
-	OperationsJs   [][2]interface{} `json:"operations"`
-	Extensions     []string         `json:"extensions"`
-	Signatures     []string         `json:"signatures"`
+	RefBlockNum    uint16 `json:"ref_block_num"`
+	RefBlockPrefix uint32 `json:"ref_block_prefix"`
+	// Expiration is a Hive timestamp string ("2006-01-02T15:04:05"). Set automatically
+	// by [Client.BuildTransaction] to 30 seconds after the current head block time.
+	Expiration   string           `json:"expiration"`
+	Operations   []HiveOperation  `json:"-"`
+	OperationsJs [][2]interface{} `json:"operations"`
+	Extensions   []string         `json:"extensions"`
+	Signatures   []string         `json:"signatures"`
 }
 
 // GenerateTrxId computes the transaction ID (first 20 bytes of SHA256 of the serialized tx).
@@ -80,6 +86,9 @@ func (t *Transaction) Serialize() ([]byte, error) {
 }
 
 // BroadcastTx submits a pre-built, pre-signed Transaction to the network.
+// Most callers should use [Client.BroadcastOps] instead, which handles the full
+// build → sign → broadcast flow. Use BroadcastTx directly when you need fine-grained
+// control, such as multi-sig (multiple Sign calls before broadcasting).
 func (h *Client) BroadcastTx(tx *Transaction) error {
 	tx.prepareJson()
 	var params []interface{}

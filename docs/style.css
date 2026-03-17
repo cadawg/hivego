@@ -99,7 +99,7 @@ nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
 
 /* ── Main sections ── */
 
-main { padding: 3rem 0; display: flex; flex-direction: column; gap: 3rem; }
+main { padding: 3rem 0 5rem; display: flex; flex-direction: column; gap: 3rem; }
 
 section h2 {
   font-size: 1.35rem;

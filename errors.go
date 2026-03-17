@@ -27,6 +27,9 @@ var (
 	// ErrInvalidAsset is returned by [ParseAsset] when the input string cannot be parsed.
 	ErrInvalidAsset = errors.New("invalid asset")
 
+	// ErrInvalidSignature is returned when a signature cannot be decoded or recovery fails.
+	ErrInvalidSignature = errors.New("invalid signature")
+
 	// ErrDeclineVotingRightsNotConfirmed is returned when [DeclineVotingRightsOperation].Decline
 	// is true but IUnderstandThisIsIrreversible is not set. Declining voting rights permanently
 	// removes the account's ability to vote and cannot be undone.

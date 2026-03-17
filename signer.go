@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/decred/base58"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 )
 
@@ -96,6 +97,29 @@ func GphBase58Encode(payload []byte, version [1]byte) string {
 	cs := checksum(input)
 	input = append(input, cs[:]...)
 	return base58.Encode(input)
+}
+
+// SignMessage signs an arbitrary message and returns a 65-byte compact signature.
+// The digest is SHA256(message), matching the convention used by Hive Keychain and
+// similar services for login-by-signature authentication.
+func SignMessage(message []byte, key *KeyPair) ([]byte, error) {
+	if key == nil {
+		return nil, ErrNilKey
+	}
+	digest := sha256.Sum256(message)
+	return ecdsa.SignCompact(key.PrivateKey, digest[:], true), nil
+}
+
+// RecoverMessageSigner recovers the secp256k1 public key that produced sig over message.
+// sig must be a 65-byte compact signature as returned by [SignMessage] or Hive Keychain.
+// Returns [ErrInvalidSignature] if recovery fails.
+func RecoverMessageSigner(message, sig []byte) (*secp256k1.PublicKey, error) {
+	digest := sha256.Sum256(message)
+	pubKey, _, err := ecdsa.RecoverCompact(sig, digest[:])
+	if err != nil {
+		return nil, fmt.Errorf("signature recovery failed: %w", ErrInvalidSignature)
+	}
+	return pubKey, nil
 }
 
 func checksum(input []byte) [4]byte {

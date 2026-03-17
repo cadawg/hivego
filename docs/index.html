@@ -61,6 +61,10 @@
           Stream blocks sequentially from any starting point with automatic polling at the chain head.
         </li>
         <li>
+          <strong>Message signing</strong>
+          Sign and verify arbitrary messages for login-by-signature authentication, compatible with Hive Keychain and HiveSigner.
+        </li>
+        <li>
           <strong>80%+ test coverage</strong>
           Unit tests with beem-verified serialization vectors, plus integration tests against a live node.
         </li>
@@ -231,6 +235,19 @@ blocks, errc := client.Database.StreamBlocks(ctx, <span class="num">88000000</sp
     log.Fatal(err)
 }</code></pre>
 
+      <h3>Message signing (login-by-signature)</h3>
+      <pre><code><span class="cm">// Sign a message</span>
+sig, err := hivego.SignMessage([]byte(<span class="str">"login-token"</span>), postingKey)
+
+<span class="cm">// Recover the public key and verify against an account</span>
+pubKey, err := hivego.RecoverMessageSigner([]byte(<span class="str">"login-token"</span>), sig)
+recoveredStr := hivego.GetPublicKeyStringWithPrefix(pubKey, <span class="str">"STM"</span>)
+
+accounts, _ := client.Database.GetAccounts([]string{<span class="str">"alice"</span>})
+<span class="kw">for</span> _, keyAuth := <span class="kw">range</span> accounts[<span class="num">0</span>].Posting.KeyAuths {
+    <span class="kw">if</span> keyAuth[<span class="num">0</span>].(string) == recoveredStr { <span class="cm">// authenticated</span> }
+}</code></pre>
+
       <h3>Testnet</h3>
       <pre><code>client := hivego.NewClient(<span class="str">"https://testnet.openhive.network"</span>)
 client.ChainID = <span class="str">"18dcf0a285365fc58b71f18b3d3fec954aa0c141c44e4e5cb4cf777b9eab274e"</span>
@@ -240,8 +257,9 @@ client.PublicKeyPrefix = <span class="str">"TST"</span></code></pre>
     <section id="errors">
       <h2>Error handling</h2>
       <pre><code><span class="cm">// Sentinel errors — use errors.Is</span>
-<span class="kw">if</span> errors.Is(err, hivego.ErrChecksumMismatch) { ... }
-<span class="kw">if</span> errors.Is(err, hivego.ErrInvalidAsset)     { ... }
+<span class="kw">if</span> errors.Is(err, hivego.ErrChecksumMismatch)  { ... }
+<span class="kw">if</span> errors.Is(err, hivego.ErrInvalidAsset)      { ... }
+<span class="kw">if</span> errors.Is(err, hivego.ErrInvalidSignature)  { ... }
 
 <span class="cm">// RPC errors from the node — use errors.As</span>
 <span class="kw">var</span> rpcErr *hivego.RPCError

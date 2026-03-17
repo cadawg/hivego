@@ -631,6 +631,37 @@ payload, version, err := hivego.GphBase58CheckDecode(wif)
 encoded := hivego.GphBase58Encode(payload, version)
 ```
 
+## Message Signing
+
+Many Hive services use signed messages for login/authentication (Keychain, HiveSigner, etc.).
+The digest is `SHA256(message)`, and the signature is a 65-byte compact recoverable signature.
+
+```go
+key, _ := hivego.KeyPairFromWif("5J...")
+
+// Sign a message
+sig, err := hivego.SignMessage([]byte("login-token"), key)
+
+// Recover the public key from a signature
+pubKey, err := hivego.RecoverMessageSigner([]byte("login-token"), sig)
+
+// Verify by comparing against an account's posting keys
+accounts, _ := client.Database.GetAccounts([]string{"alice"})
+recoveredStr := hivego.GetPublicKeyStringWithPrefix(pubKey, client.PublicKeyPrefix)
+for _, keyAuth := range accounts[0].Posting.KeyAuths {
+    if keyAuth[0].(string) == recoveredStr {
+        // valid
+    }
+}
+```
+
+Keychain and other services encode the signature as hex for transport:
+```go
+import "encoding/hex"
+hexSig := hex.EncodeToString(sig)
+sigBytes, _ := hex.DecodeString(hexSig)
+```
+
 ## Testnet / Custom Chain
 
 ```go

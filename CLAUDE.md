@@ -35,7 +35,7 @@ go vet ./...         # Static analysis
 | `broadcaster.go` | `Transaction` struct, `BuildTransaction`, `Sign`, `BroadcastTx`, `BroadcastOps`, `Serialize` |
 | `hive_ops.go` | All `HiveOperation` structs and `BroadcastAPI` convenience methods |
 | `serializer.go` | Binary serialization — `SerializeOp()` implementations and helpers |
-| `signer.go` | `SignDigest`, `GphBase58CheckDecode/Encode`, signing digest helpers |
+| `signer.go` | `SignDigest`, `SignMessage`, `RecoverMessageSigner`, `GphBase58CheckDecode/Encode`, signing digest helpers |
 | `keys.go` | `KeyPair`, `KeyPairFromWif`, `KeyPairFromBytes`, public key encode/decode |
 | `errors.go` | Sentinel errors (`ErrNilKey` etc.) and `RPCError` struct |
 | `types.go` | `Asset`, `ParseAsset`, `Block`, `AccountData`, `AuthorityData`, `Authority`, `AccountAuth`, `KeyAuth` |

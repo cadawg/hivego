@@ -304,3 +304,19 @@ func TestCommentOptionsMarshalJSONNoBeneficiaries(t *testing.T) {
 		t.Fatalf("extensions len = %d, want 0", len(exts))
 	}
 }
+
+func TestTransferMarshalJSONUsesStringAsset(t *testing.T) {
+	op := TransferOperation{From: "alice", To: "bob", Amount: Asset{Amount: 1000, Precision: 3, Symbol: "HIVE"}, Memo: ""}
+	b, err := json.Marshal(op)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	var got map[string]interface{}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got["amount"] != "1.000 HIVE" {
+		t.Fatalf("amount = %v, want %q", got["amount"], "1.000 HIVE")
+	}
+}

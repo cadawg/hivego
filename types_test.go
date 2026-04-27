@@ -1,6 +1,7 @@
 package hivego
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -75,5 +76,35 @@ func TestAssetStringRoundTrip(t *testing.T) {
 		if got := a.String(); got != s {
 			t.Errorf("round-trip %q: got %q", s, got)
 		}
+	}
+}
+
+func TestAssetMarshalJSON(t *testing.T) {
+	b, err := json.Marshal(Asset{Amount: 1000, Precision: 3, Symbol: "HIVE"})
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	if got, want := string(b), `"1.000 HIVE"`; got != want {
+		t.Fatalf("Asset JSON = %s, want %s", got, want)
+	}
+}
+
+func TestAssetUnmarshalJSONString(t *testing.T) {
+	var a Asset
+	if err := json.Unmarshal([]byte(`"5.321 HBD"`), &a); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if a != (Asset{Amount: 5321, Precision: 3, Symbol: "HBD"}) {
+		t.Fatalf("decoded asset = %#v", a)
+	}
+}
+
+func TestAssetUnmarshalJSONLegacyObject(t *testing.T) {
+	var a Asset
+	if err := json.Unmarshal([]byte(`{"Amount":1000,"Precision":3,"Symbol":"HIVE"}`), &a); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if a != (Asset{Amount: 1000, Precision: 3, Symbol: "HIVE"}) {
+		t.Fatalf("decoded asset = %#v", a)
 	}
 }

@@ -97,6 +97,39 @@ func (a Asset) String() string {
 	return fmt.Sprintf("%d.%0*d %s", whole, int(a.Precision), frac, a.Symbol)
 }
 
+// MarshalJSON encodes Asset as Hive's canonical string form (e.g. "1.000 HIVE").
+func (a Asset) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.String())
+}
+
+// UnmarshalJSON decodes Asset from either canonical string form or legacy object form.
+func (a *Asset) UnmarshalJSON(b []byte) error {
+	var asString string
+	if err := json.Unmarshal(b, &asString); err == nil {
+		parsed, err := ParseAsset(asString)
+		if err != nil {
+			return err
+		}
+		*a = parsed
+		return nil
+	}
+
+	var legacy struct {
+		Amount    int64  `json:"amount"`
+		Precision uint8  `json:"precision"`
+		Symbol    string `json:"symbol"`
+	}
+	if err := json.Unmarshal(b, &legacy); err != nil {
+		return err
+	}
+	if strings.TrimSpace(legacy.Symbol) == "" {
+		return fmt.Errorf("asset symbol required: %w", ErrInvalidAsset)
+	}
+
+	*a = Asset{Amount: legacy.Amount, Precision: legacy.Precision, Symbol: legacy.Symbol}
+	return nil
+}
+
 // Block represents a Hive block as returned by block_api.get_block.
 // Transactions are raw JSON — unmarshal them individually based on the operation types you care about.
 // TransactionIDs is populated when the block is fetched with transaction IDs included.

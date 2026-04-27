@@ -140,7 +140,7 @@ func (o CommentOptionsOperation) MarshalJSON() ([]byte, error) {
 	type plain struct {
 		Author               string           `json:"author"`
 		Permlink             string           `json:"permlink"`
-		MaxAcceptedPayout    string           `json:"max_accepted_payout"`
+		MaxAcceptedPayout    Asset            `json:"max_accepted_payout"`
 		PercentHbd           uint16           `json:"percent_hbd"`
 		AllowVotes           bool             `json:"allow_votes"`
 		AllowCurationRewards bool             `json:"allow_curation_rewards"`
@@ -150,7 +150,7 @@ func (o CommentOptionsOperation) MarshalJSON() ([]byte, error) {
 	p := plain{
 		Author:               o.Author,
 		Permlink:             o.Permlink,
-		MaxAcceptedPayout:    o.MaxAcceptedPayout.String(),
+		MaxAcceptedPayout:    o.MaxAcceptedPayout,
 		PercentHbd:           o.PercentHbd,
 		AllowVotes:           o.AllowVotes,
 		AllowCurationRewards: o.AllowCurationRewards,

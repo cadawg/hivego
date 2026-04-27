@@ -137,25 +137,13 @@ func (o CommentOptionsOperation) MarshalJSON() ([]byte, error) {
 	type beneficiaryExt struct {
 		Beneficiaries []Beneficiary `json:"beneficiaries"`
 	}
-	type plain struct {
-		Author               string           `json:"author"`
-		Permlink             string           `json:"permlink"`
-		MaxAcceptedPayout    Asset            `json:"max_accepted_payout"`
-		PercentHbd           uint16           `json:"percent_hbd"`
-		AllowVotes           bool             `json:"allow_votes"`
-		AllowCurationRewards bool             `json:"allow_curation_rewards"`
-		Extensions           [][2]interface{} `json:"extensions"`
+	type commentOptionsAlias CommentOptionsOperation
+	type commentOptionsJSON struct {
+		commentOptionsAlias
+		Extensions [][2]interface{} `json:"extensions"`
 	}
 
-	p := plain{
-		Author:               o.Author,
-		Permlink:             o.Permlink,
-		MaxAcceptedPayout:    o.MaxAcceptedPayout,
-		PercentHbd:           o.PercentHbd,
-		AllowVotes:           o.AllowVotes,
-		AllowCurationRewards: o.AllowCurationRewards,
-		Extensions:           make([][2]interface{}, 0),
-	}
+	p := commentOptionsJSON{commentOptionsAlias: commentOptionsAlias(o), Extensions: make([][2]interface{}, 0)}
 
 	if len(o.Beneficiaries) > 0 {
 		p.Extensions = append(p.Extensions, [2]interface{}{0, beneficiaryExt{Beneficiaries: o.Beneficiaries}})

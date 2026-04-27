@@ -125,10 +125,44 @@ type CommentOptionsOperation struct {
 	PercentHbd           uint16        `json:"percent_hbd"`
 	AllowVotes           bool          `json:"allow_votes"`
 	AllowCurationRewards bool          `json:"allow_curation_rewards"`
-	Beneficiaries        []Beneficiary `json:"beneficiaries"`
+	Beneficiaries        []Beneficiary `json:"-"`
 }
 
 func (o CommentOptionsOperation) OpName() string { return "comment_options" }
+
+// MarshalJSON encodes comment_options in condenser-compatible form.
+// Beneficiaries are represented as an extensions static_variant:
+// [[0,{"beneficiaries":[...]}]].
+func (o CommentOptionsOperation) MarshalJSON() ([]byte, error) {
+	type beneficiaryExt struct {
+		Beneficiaries []Beneficiary `json:"beneficiaries"`
+	}
+	type plain struct {
+		Author               string           `json:"author"`
+		Permlink             string           `json:"permlink"`
+		MaxAcceptedPayout    string           `json:"max_accepted_payout"`
+		PercentHbd           uint16           `json:"percent_hbd"`
+		AllowVotes           bool             `json:"allow_votes"`
+		AllowCurationRewards bool             `json:"allow_curation_rewards"`
+		Extensions           [][2]interface{} `json:"extensions"`
+	}
+
+	p := plain{
+		Author:               o.Author,
+		Permlink:             o.Permlink,
+		MaxAcceptedPayout:    o.MaxAcceptedPayout.String(),
+		PercentHbd:           o.PercentHbd,
+		AllowVotes:           o.AllowVotes,
+		AllowCurationRewards: o.AllowCurationRewards,
+		Extensions:           make([][2]interface{}, 0),
+	}
+
+	if len(o.Beneficiaries) > 0 {
+		p.Extensions = append(p.Extensions, [2]interface{}{0, beneficiaryExt{Beneficiaries: o.Beneficiaries}})
+	}
+
+	return json.Marshal(p)
+}
 
 // DeleteCommentOperation deletes a post or comment.
 // The post must have no replies, no pending payout, and no net votes.

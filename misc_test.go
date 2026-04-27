@@ -221,3 +221,86 @@ func TestMarshalJSONOps(t *testing.T) {
 		Account: "alice", Active: &auth, MemoKey: kp.PublicKey,
 	})
 }
+
+func TestCommentOptionsMarshalJSONWithBeneficiaries(t *testing.T) {
+	op := CommentOptionsOperation{
+		Author:               "alice",
+		Permlink:             "my-post",
+		MaxAcceptedPayout:    Asset{Amount: 1000000000, Precision: 3, Symbol: "HBD"},
+		PercentHbd:           10000,
+		AllowVotes:           true,
+		AllowCurationRewards: true,
+		Beneficiaries:        []Beneficiary{{Account: "bob", Weight: 500}},
+	}
+
+	b, err := json.Marshal(op)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	var got map[string]interface{}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	if got["max_accepted_payout"] != "1000000.000 HBD" {
+		t.Fatalf("max_accepted_payout = %v, want %q", got["max_accepted_payout"], "1000000.000 HBD")
+	}
+	if _, exists := got["beneficiaries"]; exists {
+		t.Fatal("unexpected top-level beneficiaries field")
+	}
+
+	exts, ok := got["extensions"].([]interface{})
+	if !ok {
+		t.Fatalf("extensions has unexpected type %T", got["extensions"])
+	}
+	if len(exts) != 1 {
+		t.Fatalf("extensions len = %d, want 1", len(exts))
+	}
+
+	pair, ok := exts[0].([]interface{})
+	if !ok || len(pair) != 2 {
+		t.Fatalf("extensions[0] has unexpected shape: %#v", exts[0])
+	}
+	if pair[0] != float64(0) {
+		t.Fatalf("extensions[0][0] = %v, want 0", pair[0])
+	}
+
+	payload, ok := pair[1].(map[string]interface{})
+	if !ok {
+		t.Fatalf("extensions[0][1] has unexpected type %T", pair[1])
+	}
+	beneficiaries, ok := payload["beneficiaries"].([]interface{})
+	if !ok || len(beneficiaries) != 1 {
+		t.Fatalf("beneficiaries has unexpected shape: %#v", payload["beneficiaries"])
+	}
+}
+
+func TestCommentOptionsMarshalJSONNoBeneficiaries(t *testing.T) {
+	op := CommentOptionsOperation{
+		Author:               "alice",
+		Permlink:             "my-post",
+		MaxAcceptedPayout:    Asset{Amount: 0, Precision: 3, Symbol: "HBD"},
+		PercentHbd:           0,
+		AllowVotes:           true,
+		AllowCurationRewards: true,
+	}
+
+	b, err := json.Marshal(op)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	var got map[string]interface{}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	exts, ok := got["extensions"].([]interface{})
+	if !ok {
+		t.Fatalf("extensions has unexpected type %T", got["extensions"])
+	}
+	if len(exts) != 0 {
+		t.Fatalf("extensions len = %d, want 0", len(exts))
+	}
+}
